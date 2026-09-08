@@ -1,0 +1,5 @@
+requests
+pyyaml
+python-dotenv
+openai==1.56.2
+azure-identity==1.19.0

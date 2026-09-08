@@ -1,0 +1,1 @@
+Scanner/remediation system prompts go here, mirroring yapl-upgrader's `prompts/` directory. Currently the instructions live inline in `remediation/dependency_fixer.py` and `remediation/checkmarx_fixer.py`; move them here as they grow.

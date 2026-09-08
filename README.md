@@ -1,20 +1,48 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# daily-dashboard
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+Agentic daily scan of Azure DevOps pipelines for operational issues. v1 covers:
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+- Dependency Scanner / Vulnerability issues
+- Checkmarx violations
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+For each finding, the tool clones the affected repo, creates a branch, uses an
+LLM (Azure OpenAI Chat Completions API with tool-calling, same pattern as
+[yapl-upgrader](../yapl-upgrader)'s `core/rewrite_runner.py`) to apply a fix,
+and opens a Pull Request for human review via `core/ado_git.py` (vendored from
+yapl-upgrader).
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+Other categories from the original scope (expiring certificates, incidents,
+environment health checks, an email digest of action points) are intentionally
+out of scope for v1 - see the plan this project was scaffolded from.
+
+## Setup
+
+```
+pip install -e .
+cp .env.example .env   # fill in ADO_ORG_URL, ADO_PAT, AZURE_OPENAI_*
+cp pipelines.example.yml pipelines.yml   # list the repos/pipelines to scan
+```
+
+## Usage
+
+```
+daily-dashboard scan --config pipelines.yml --dry-run   # report findings only
+daily-dashboard scan --config pipelines.yml              # create branches/PRs
+```
+
+## Open items
+
+- The exact report/log format emitted by this org's dependency-scan and
+  Checkmarx ADO tasks hasn't been confirmed against a real pipeline run.
+  `scanners/dependency_scanner.py` and `scanners/checkmarx_scanner.py`
+  currently support a generic pre-normalized JSON list plus one well-known
+  public format each (OWASP Dependency-Check JSON, SARIF) - extend with an
+  org-specific parser once real task output is inspected.
+- Whether this project needs its own Azure OpenAI deployment or reuses
+  yapl-upgrader's.
+
+## Tests
+
+```
+pytest
+```
