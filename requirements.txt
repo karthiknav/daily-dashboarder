@@ -2,4 +2,6 @@ requests
 pyyaml
 python-dotenv
 openai==1.56.2
+gradio==5.5.0
 azure-identity==1.19.0
+azure-core>=1.32.0
