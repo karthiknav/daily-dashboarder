@@ -231,8 +231,20 @@ def _build_summary(pipelines: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _openai_url_from_lab(lab_variant: str, environment: str) -> str:
-    """Best-effort URL convention when explicit endpoint vars are not set."""
-    return f"https://{lab_variant}-{environment}-openai.openai.azure.com/"
+    """Return OpenAI URL by lab variant using lazy branch-specific evaluation."""
+    if lab_variant == "OpenLab":
+        dbutils = globals().get("dbutils")
+        if dbutils is None:
+            raise Exception("dbutils is required for OpenLab")
+        secret_scope = f"{lab_variant}-SecretScope"
+        hostname = dbutils.secrets.get(scope=secret_scope, key="OpenAiHostname")
+        return f"https://{hostname}openoaisdc-completions-apis/"
+    elif lab_variant == "OneLab":
+        return f"https://apim-1labgen-ap-apizone-{environment}01.azure-api.net/openaisdc-completions-apis/"
+    elif lab_variant == "APAI":
+        return f"https://apim-apai-ap-apizone-{environment}01.azure-api.net/openpaisdc-completions-apis/"
+    else:
+        raise Exception("Invalid lab_variant")
 
 
 def _bootstrap_openai_token_from_dbutils() -> None:
