@@ -55,6 +55,8 @@ class TestRunDailyScan(unittest.TestCase):
         with patch(f"{MODULE}.load_targets", return_value=[_target()]):
             report = run_daily_scan(Path("pipelines.yml"), dry_run=True)
 
+        pipelines_mock.get_latest_build.assert_called_once_with(definition_id=1, branch_name="main")
+
         self.assertIn("generatedAt", report)
         pipeline_entry = report["pipelines"][0]
         self.assertEqual(pipeline_entry["target"], "my-repo")

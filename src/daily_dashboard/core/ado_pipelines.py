@@ -72,6 +72,7 @@ class AdoPipelines:
         definition_id: Optional[int] = None,
         status_filter: Optional[str] = None,
         result_filter: Optional[str] = None,
+        branch_name: Optional[str] = None,
         top: int = 5,
     ) -> List[Dict[str, Any]]:
         """List recent builds, most-recent first.
@@ -86,6 +87,11 @@ class AdoPipelines:
             params["statusFilter"] = status_filter
         if result_filter:
             params["resultFilter"] = result_filter
+        if branch_name:
+            branch_ref = branch_name.strip()
+            if not branch_ref.startswith("refs/"):
+                branch_ref = f"refs/heads/{branch_ref}"
+            params["branchName"] = branch_ref
         data = self._get(url, params=params)
         return data.get("value") or []
 
@@ -94,11 +100,13 @@ class AdoPipelines:
         *,
         definition_id: int,
         result_filter: Optional[str] = None,
+        branch_name: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         builds = self.list_recent_builds(
             definition_id=definition_id,
             status_filter="completed",
             result_filter=result_filter,
+            branch_name=branch_name,
             top=1,
         )
         return builds[0] if builds else None

@@ -299,7 +299,10 @@ def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any
             pipelines_report.append({"target": target.repo, "error": f"pipeline '{target.pipeline}' not found"})
             continue
         definition_id = definitions[0]["id"]
-        latest_build = pipelines.get_latest_build(definition_id=definition_id)
+        latest_build = pipelines.get_latest_build(
+            definition_id=definition_id,
+            branch_name=target.target_branch,
+        )
         if not latest_build:
             pipelines_report.append({"target": target.repo, "error": "no completed builds found"})
             continue

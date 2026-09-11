@@ -32,11 +32,16 @@ class TestAdoPipelines(unittest.TestCase):
     def test_get_latest_build_uses_result_filter(self) -> None:
         resp = self._mock_response({"value": [{"id": 100, "result": "failed"}]})
         with patch("daily_dashboard.core.ado_pipelines.requests.get", return_value=resp) as mock_get:
-            build = self.pipelines.get_latest_build(definition_id=42, result_filter="failed")
+            build = self.pipelines.get_latest_build(
+                definition_id=42,
+                result_filter="failed",
+                branch_name="checkmarx_v1",
+            )
 
         self.assertEqual(build["id"], 100)
         self.assertEqual(mock_get.call_args.kwargs["params"]["resultFilter"], "failed")
         self.assertEqual(mock_get.call_args.kwargs["params"]["definitions"], 42)
+        self.assertEqual(mock_get.call_args.kwargs["params"]["branchName"], "refs/heads/checkmarx_v1")
 
     def test_get_latest_build_returns_none_when_empty(self) -> None:
         resp = self._mock_response({"value": []})
