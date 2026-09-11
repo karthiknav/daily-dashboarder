@@ -15,12 +15,14 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
-from ..config import AdoConfig, ScanTarget, load_ado_config, load_targets
+from ..config import AdoConfig, CheckmarxConfig, ScanTarget, load_ado_config, load_checkmarx_config, load_targets
 from ..core.ado_git import AdoGit
 from ..core.ado_pipelines import AdoPipelines
 from ..remediation.checkmarx_fixer import fix_checkmarx_violation
 from ..remediation.dependency_fixer import fix_dependency
-from ..scanners import checkmarx_scanner, dependency_scanner
+from ..scanners import dependency_scanner
+from ..scanners.checkmarx_investigator import investigate_checkmarx_task_logs
+from ..scanners.checkmarx_scanner import filter_by_min_severity
 from ..scanners.checkmarx_scanner import CheckmarxFinding
 from ..scanners.dependency_scanner import DependencyFinding
 
@@ -48,18 +50,25 @@ def _scan_dependency_findings(pipelines: AdoPipelines, build_id: int) -> List[De
     return findings
 
 
-def _scan_checkmarx_findings(pipelines: AdoPipelines, build_id: int) -> List[CheckmarxFinding]:
-    records = pipelines.find_timeline_records(build_id, name_contains="checkmarx")
+def _scan_checkmarx_findings(
+    pipelines: AdoPipelines,
+    build_id: int,
+    *,
+    cx_cfg: CheckmarxConfig,
+) -> List[CheckmarxFinding]:
+    records = pipelines.find_timeline_records(build_id, name_contains=cx_cfg.task_name)
+    if not records:
+        return []
+
     findings: List[CheckmarxFinding] = []
     for record in records:
         log_text = pipelines.get_task_log_text(build_id, record)
-        parsed = _try_parse_json(log_text)
-        if isinstance(parsed, dict) and "runs" in parsed:
-            findings.extend(checkmarx_scanner.parse_sarif(parsed))
-        elif isinstance(parsed, list):
-            findings.extend(checkmarx_scanner.parse_generic_findings(parsed))
-        # else: unrecognized log format for this task - skip (see scanners/checkmarx_scanner.py note).
-    return checkmarx_scanner.filter_by_min_severity(findings, min_severity="high")
+        if not log_text.strip():
+            continue
+        investigation = investigate_checkmarx_task_logs(log_text)
+        findings.extend(investigation.get("findings") or [])
+
+    return filter_by_min_severity(findings, min_severity=cx_cfg.min_severity)
 
 
 def _finding_summary(category: str, finding: Finding) -> str:
@@ -222,6 +231,7 @@ def _build_summary(pipelines: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any]:
     ado_cfg = load_ado_config()
+    cx_cfg = load_checkmarx_config()
     targets = load_targets(config_path)
     pipelines_report: List[Dict[str, Any]] = []
 
@@ -251,8 +261,8 @@ def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any
                 )
             )
 
-        if "checkmarx" in target.features:
-            cx_findings = _scan_checkmarx_findings(pipelines, build_id)
+        if any(str(feature).strip().lower() in {"checkmarx", "rabobankcheckmarx"} for feature in target.features):
+            cx_findings = _scan_checkmarx_findings(pipelines, build_id, cx_cfg=cx_cfg)
             findings.extend(
                 _remediate_checkmarx_findings(
                     ado=ado, ado_cfg=ado_cfg, target=target, findings=cx_findings, dry_run=dry_run

@@ -121,6 +121,47 @@ class TestRunDailyScan(unittest.TestCase):
         self.assertEqual(report["summary"]["totalPipelines"], 0)
         self.assertEqual(report["summary"]["totalViolations"], 0)
 
+    def test_checkmarx_feature_uses_task_logs_and_remediation(self) -> None:
+        pipelines_mock = MagicMock()
+        pipelines_mock.list_pipeline_definitions.return_value = [{"id": 7}]
+        pipelines_mock.get_latest_build.return_value = _latest_build()
+        pipelines_mock.find_timeline_records.return_value = [{"log": {"id": 12}}]
+        pipelines_mock.get_task_log_text.return_value = "checkmarx task log"
+        self._patch_common(pipelines_mock=pipelines_mock)
+
+        target = _target(features=["RabobankCheckmarx"])
+        with patch(f"{MODULE}.load_targets", return_value=[target]), patch(
+            f"{MODULE}.investigate_checkmarx_task_logs",
+            return_value={
+                "scanId": "922f5390-5083-4b80-b6cf-6057622a3ac6",
+                "findings": [
+                    MagicMock(
+                        severity="MEDIUM",
+                        rule="Open*Redirect",
+                        file="/src/main/java/Foo.java",
+                        line=42,
+                        to_dict=lambda: {
+                            "rule": "Open*Redirect",
+                            "file": "/src/main/java/Foo.java",
+                            "line": 42,
+                            "severity": "MEDIUM",
+                            "description": "CWE-601",
+                            "source": "checkmarx_api",
+                        },
+                    )
+                ],
+            },
+        ), patch(f"{MODULE}.fix_checkmarx_violation", return_value={"success": False, "filesChanged": [], "notes": "manual fix required"}):
+            report = run_daily_scan(Path("pipelines.yml"), dry_run=False)
+
+        pipelines_mock.find_timeline_records.assert_called_once()
+        args, kwargs = pipelines_mock.find_timeline_records.call_args
+        self.assertEqual(args[0], 99)
+        self.assertEqual(kwargs["name_contains"], "RabobankCheckmarx")
+        finding = report["pipelines"][0]["findings"][0]
+        self.assertEqual(finding["category"], "checkmarx")
+        self.assertEqual(finding["finding"]["rule"], "Open*Redirect")
+
 
 class TestWriteReport(unittest.TestCase):
     def test_round_trips_json(self) -> None:

@@ -23,6 +23,12 @@ class AdoConfig:
 
 
 @dataclass
+class CheckmarxConfig:
+    task_name: str
+    min_severity: str
+
+
+@dataclass
 class ScanTarget:
     project: str
     repo: str
@@ -39,6 +45,13 @@ def load_ado_config() -> AdoConfig:
     if not org_url or not pat:
         raise ValueError("ADO_ORG_URL and ADO_PAT (or AZDO_PAT) must be set")
     return AdoConfig(org_url=org_url, project=project, pat=pat)
+
+
+def load_checkmarx_config() -> CheckmarxConfig:
+    return CheckmarxConfig(
+        task_name=os.environ.get("CHECKMARX_TASK_NAME", "RabobankCheckmarx"),
+        min_severity=os.environ.get("CHECKMARX_MIN_SEVERITY", "medium"),
+    )
 
 
 def load_targets(config_path: Path) -> List[ScanTarget]:

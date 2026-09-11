@@ -1,0 +1,10 @@
+# Targets scanned by `daily-dashboard scan`. Copy to pipelines.yml and edit.
+targets:
+  - project: "Tribe Business Lending"
+    repo: "lf-forward-integrations"
+    pipeline: "lf-forward-integrations-continuous-integration"
+    checkout_url: "https://raboweb@dev.azure.com/raboweb/Tribe%20Business%20Lending/_git/lf-forward-integrations"
+    target_branch: "main"
+    features:
+      - Dependency Scanner
+      - RabobankCheckmarx
