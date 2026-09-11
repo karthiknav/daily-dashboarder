@@ -10,6 +10,7 @@ pipeline and a ready-PR link per remediated finding.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -229,7 +230,48 @@ def _build_summary(pipelines: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def _openai_url_from_lab(lab_variant: str, environment: str) -> str:
+    """Best-effort URL convention when explicit endpoint vars are not set."""
+    return f"https://{lab_variant}-{environment}-openai.openai.azure.com/"
+
+
+def _bootstrap_openai_token_from_dbutils() -> None:
+    """Populate Azure OpenAI env vars from Databricks secrets when available."""
+    dbutils = globals().get("dbutils")
+    if dbutils is None:
+        return
+
+    lab_variant = os.getenv("OPENAI_LAB_VARIANT") or os.getenv("LAB_VARIANT") or "OpenLab"
+    environment = os.getenv("OPENAI_ENVIRONMENT") or os.getenv("ENVIRONMENT") or "prd"
+    tenant_id = os.getenv("AZURE_TENANT_ID", "6e93a626-8aca-4dc1-9191-ce291b4b75a1")
+    secret_scope = f"{lab_variant}-SecretScope"
+
+    base_url = os.getenv("AZURE_OPENAI_BASE_URL") or _openai_url_from_lab(lab_variant, environment)
+    os.environ["AZURE_OPENAI_BASE_URL"] = base_url
+    os.environ.setdefault("AZURE_OPENAI_ENDPOINT", base_url)
+
+    try:
+        from azure.identity import ClientSecretCredential
+
+        client_id = dbutils.secrets.get(scope=secret_scope, key="DataServicePrincipalClientId")
+        client_secret = dbutils.secrets.get(scope=secret_scope, key="DataServicePrincipalClientSecret")
+        credential = ClientSecretCredential(
+            tenant_id=tenant_id,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+        token = credential.get_token("https://cognitiveservices.azure.com/.default").token
+        os.environ["AZURE_OPENAI_TOKEN"] = token
+        os.environ["AZURE_OPENAI_API_KEY"] = token
+        os.environ["AZURE_OPENAI_VERSION"] = "2024-10-21"
+        os.environ.setdefault("AZURE_OPENAI_DEPLOYMENT", "gpt-5.1")
+    except Exception:
+        # Non-Databricks/local runs should continue without hard failure.
+        return
+
+
 def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any]:
+    _bootstrap_openai_token_from_dbutils()
     ado_cfg = load_ado_config()
     cx_cfg = load_checkmarx_config()
     targets = load_targets(config_path)
