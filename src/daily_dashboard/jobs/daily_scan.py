@@ -29,6 +29,10 @@ from ..scanners.dependency_scanner import DependencyFinding
 
 Finding = Union[DependencyFinding, CheckmarxFinding]
 
+try:
+    from databricks.sdk.runtime import dbutils  # type: ignore
+except Exception:
+    dbutils = None
 
 def _try_parse_json(text: str):
     try:
@@ -249,16 +253,12 @@ def _openai_url_from_lab(lab_variant: str, environment: str) -> str:
 
 def _bootstrap_openai_token_from_dbutils() -> None:
     """Populate Azure OpenAI env vars from Databricks secrets when available."""
-    dbutils = globals().get("dbutils")
-    if dbutils is None:
-        return
-
     lab_variant = os.getenv("OPENAI_LAB_VARIANT") or os.getenv("LAB_VARIANT") or "OpenLab"
     environment = os.getenv("OPENAI_ENVIRONMENT") or os.getenv("ENVIRONMENT") or "prd"
     tenant_id = os.getenv("AZURE_TENANT_ID", "6e93a626-8aca-4dc1-9191-ce291b4b75a1")
     secret_scope = f"{lab_variant}-SecretScope"
 
-    base_url = os.getenv("AZURE_OPENAI_BASE_URL") or _openai_url_from_lab(lab_variant, environment)
+    base_url = _openai_url_from_lab(lab_variant, environment)
     os.environ["AZURE_OPENAI_BASE_URL"] = base_url
     os.environ.setdefault("AZURE_OPENAI_ENDPOINT", base_url)
 
