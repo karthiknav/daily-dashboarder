@@ -2,7 +2,7 @@
 targets:
   - project: "Tribe Business Lending"
     repo: "lf-forward-integrations"
-    pipeline: "lf-forward-integrations-continuous-integration"
+    pipeline: "lf-forward-integrations-build-other-branch"
     checkout_url: "https://raboweb@dev.azure.com/raboweb/Tribe%20Business%20Lending/_git/lf-forward-integrations"
     target_branch: "checkmarx_v1"
     features:
