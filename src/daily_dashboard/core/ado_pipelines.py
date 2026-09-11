@@ -46,6 +46,21 @@ class AdoPipelines:
         proj = quote(unquote(self.project), safe="")
         return f"{self.org_url}/{proj}/_apis"
 
+    @staticmethod
+    def _normalize_branch_ref(branch: str) -> str:
+        ref = (branch or "").strip()
+        if ref and not ref.startswith("refs/"):
+            ref = f"refs/heads/{ref}"
+        return ref
+
+    @classmethod
+    def _build_matches_branch(cls, build: Dict[str, Any], branch_name: str) -> bool:
+        expected = cls._normalize_branch_ref(branch_name)
+        if not expected:
+            return True
+        source_branch = (build.get("sourceBranch") or "").strip()
+        return source_branch == expected
+
     def _get(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         params = dict(params or {})
         params.setdefault("api-version", API_VERSION)
@@ -88,10 +103,7 @@ class AdoPipelines:
         if result_filter:
             params["resultFilter"] = result_filter
         if branch_name:
-            branch_ref = branch_name.strip()
-            if not branch_ref.startswith("refs/"):
-                branch_ref = f"refs/heads/{branch_ref}"
-            params["branchName"] = branch_ref
+            params["branchName"] = self._normalize_branch_ref(branch_name)
         data = self._get(url, params=params)
         return data.get("value") or []
 
@@ -109,7 +121,22 @@ class AdoPipelines:
             branch_name=branch_name,
             top=1,
         )
-        return builds[0] if builds else None
+        if builds:
+            return builds[0]
+
+        # Fallback: some pipeline configurations do not honor branchName reliably.
+        # In that case, fetch a wider recent set and filter by sourceBranch locally.
+        if branch_name:
+            recent = self.list_recent_builds(
+                definition_id=definition_id,
+                status_filter="completed",
+                result_filter=result_filter,
+                top=50,
+            )
+            for build in recent:
+                if self._build_matches_branch(build, branch_name):
+                    return build
+        return None
 
     def get_build_timeline(self, build_id: int) -> Dict[str, Any]:
         """Return the build timeline: per-task/stage records (name, result, log ref)."""

@@ -304,7 +304,12 @@ def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any
             branch_name=target.target_branch,
         )
         if not latest_build:
-            pipelines_report.append({"target": target.repo, "error": "no completed builds found"})
+            pipelines_report.append(
+                {
+                    "target": target.repo,
+                    "error": f"no completed builds found for branch '{target.target_branch}'",
+                }
+            )
             continue
         build_id = latest_build["id"]
 
