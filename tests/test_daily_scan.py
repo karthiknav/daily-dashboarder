@@ -164,6 +164,25 @@ class TestRunDailyScan(unittest.TestCase):
         self.assertEqual(finding["category"], "checkmarx")
         self.assertEqual(finding["finding"]["rule"], "Open*Redirect")
 
+    def test_no_build_for_branch_includes_branch_debug_hints(self) -> None:
+        pipelines_mock = MagicMock()
+        pipelines_mock.list_pipeline_definitions.return_value = [{"id": 1}]
+        pipelines_mock.get_latest_build.return_value = None
+        pipelines_mock.list_recent_builds.return_value = [
+            {"id": 301, "sourceBranch": "refs/heads/main", "buildNumber": "20260912.1"},
+            {"id": 300, "sourceBranch": "refs/heads/checkmarx_v1", "buildNumber": "20260911.3"},
+        ]
+        self._patch_common(pipelines_mock=pipelines_mock)
+
+        with patch(f"{MODULE}.load_targets", return_value=[_target(target_branch="checkmarx_v1")]):
+            report = run_daily_scan(Path("pipelines.yml"), dry_run=True)
+
+        entry = report["pipelines"][0]
+        self.assertEqual(entry["target"], "my-repo")
+        self.assertIn("no completed builds found for branch 'checkmarx_v1'", entry["error"])
+        self.assertEqual(entry["branchDebug"][0]["sourceBranch"], "refs/heads/main")
+        self.assertEqual(entry["branchDebug"][1]["sourceBranch"], "refs/heads/checkmarx_v1")
+
 
 class TestWriteReport(unittest.TestCase):
     def test_round_trips_json(self) -> None:

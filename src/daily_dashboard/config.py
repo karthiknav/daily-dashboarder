@@ -60,11 +60,11 @@ def load_targets(config_path: Path) -> List[ScanTarget]:
     for item in data.get("targets") or []:
         targets.append(
             ScanTarget(
-                project=item.get("project", ""),
-                repo=item.get("repo", ""),
-                pipeline=item.get("pipeline", ""),
-                checkout_url=item.get("checkout_url", ""),
-                target_branch=item.get("target_branch", "main"),
+                project=str(item.get("project", "")).strip(),
+                repo=str(item.get("repo", "")).strip(),
+                pipeline=str(item.get("pipeline", "")).strip(),
+                checkout_url=str(item.get("checkout_url", "")).strip(),
+                target_branch=str(item.get("target_branch", "main")).strip() or "main",
                 features=item.get("features") or [],
             )
         )

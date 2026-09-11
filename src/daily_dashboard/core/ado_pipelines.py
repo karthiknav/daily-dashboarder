@@ -53,13 +53,23 @@ class AdoPipelines:
             ref = f"refs/heads/{ref}"
         return ref
 
+    @staticmethod
+    def _strip_head_prefix(branch_or_ref: str) -> str:
+        v = (branch_or_ref or "").strip()
+        if v.startswith("refs/heads/"):
+            return v[len("refs/heads/") :]
+        return v
+
     @classmethod
     def _build_matches_branch(cls, build: Dict[str, Any], branch_name: str) -> bool:
         expected = cls._normalize_branch_ref(branch_name)
         if not expected:
             return True
         source_branch = (build.get("sourceBranch") or "").strip()
-        return source_branch == expected
+        if source_branch == expected:
+            return True
+        # Some APIs/contexts return short branch names instead of refs/heads/*.
+        return cls._strip_head_prefix(source_branch) == cls._strip_head_prefix(expected)
 
     def _get(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         params = dict(params or {})
@@ -103,7 +113,7 @@ class AdoPipelines:
         if result_filter:
             params["resultFilter"] = result_filter
         if branch_name:
-            params["branchName"] = self._normalize_branch_ref(branch_name)
+            params["branchName"] = branch_name.strip()
         data = self._get(url, params=params)
         return data.get("value") or []
 
@@ -114,15 +124,31 @@ class AdoPipelines:
         result_filter: Optional[str] = None,
         branch_name: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        builds = self.list_recent_builds(
-            definition_id=definition_id,
-            status_filter="completed",
-            result_filter=result_filter,
-            branch_name=branch_name,
-            top=1,
-        )
-        if builds:
-            return builds[0]
+        if branch_name:
+            candidates = [branch_name.strip(), self._normalize_branch_ref(branch_name)]
+            seen = set()
+            for candidate in candidates:
+                if not candidate or candidate in seen:
+                    continue
+                seen.add(candidate)
+                builds = self.list_recent_builds(
+                    definition_id=definition_id,
+                    status_filter="completed",
+                    result_filter=result_filter,
+                    branch_name=candidate,
+                    top=1,
+                )
+                if builds:
+                    return builds[0]
+        else:
+            builds = self.list_recent_builds(
+                definition_id=definition_id,
+                status_filter="completed",
+                result_filter=result_filter,
+                top=1,
+            )
+            if builds:
+                return builds[0]
 
         # Fallback: some pipeline configurations do not honor branchName reliably.
         # In that case, fetch a wider recent set and filter by sourceBranch locally.

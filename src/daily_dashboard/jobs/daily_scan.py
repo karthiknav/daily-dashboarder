@@ -298,16 +298,34 @@ def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any
         if not definitions:
             pipelines_report.append({"target": target.repo, "error": f"pipeline '{target.pipeline}' not found"})
             continue
-        definition_id = definitions[0]["id"]
+        exact = next(
+            (d for d in definitions if str(d.get("name", "")).strip().lower() == target.pipeline.strip().lower()),
+            None,
+        )
+        definition_id = (exact or definitions[0])["id"]
         latest_build = pipelines.get_latest_build(
             definition_id=definition_id,
             branch_name=target.target_branch,
         )
         if not latest_build:
+            recent_builds = pipelines.list_recent_builds(
+                definition_id=definition_id,
+                status_filter="completed",
+                top=10,
+            )
+            recent_branch_hints = [
+                {
+                    "id": b.get("id"),
+                    "sourceBranch": b.get("sourceBranch"),
+                    "buildNumber": b.get("buildNumber"),
+                }
+                for b in recent_builds
+            ]
             pipelines_report.append(
                 {
                     "target": target.repo,
                     "error": f"no completed builds found for branch '{target.target_branch}'",
+                    "branchDebug": recent_branch_hints,
                 }
             )
             continue
