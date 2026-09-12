@@ -105,102 +105,104 @@ def _finding_entry(
     }
 
 
-def _remediate_dependency_findings(
+def _dedupe_paths(paths: List[Path]) -> List[Path]:
+    unique: List[Path] = []
+    seen: set[str] = set()
+    for path in paths:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    return unique
+
+
+def _remediate_all_findings_single_branch(
     *,
     ado: AdoGit,
-    ado_cfg: AdoConfig,
     target: ScanTarget,
-    findings: List[DependencyFinding],
+    build_id: int,
+    dep_findings: List[DependencyFinding],
+    cx_findings: List[CheckmarxFinding],
     dry_run: bool,
 ) -> List[Dict[str, Any]]:
-    entries: List[Dict[str, Any]] = []
-    for finding in findings:
-        if dry_run:
-            entries.append(_finding_entry("dependency_scanner", finding, attempted=False))
-            continue
-        with tempfile.TemporaryDirectory(prefix="daily-dashboard-") as tmp:
-            repo_dir = Path(tmp) / target.repo
-            ado.clone_or_pull(target.checkout_url, repo_dir)
-            branch = f"daily-dashboard/dep-fix-{finding.package}-{date.today().isoformat()}"
-            ado.create_branch(repo_dir, branch)
+    findings: List[Dict[str, Any]] = []
+
+    if dry_run:
+        findings.extend(
+            _finding_entry("dependency_scanner", finding, attempted=False)
+            for finding in dep_findings
+        )
+        findings.extend(
+            _finding_entry("checkmarx", finding, attempted=False)
+            for finding in cx_findings
+        )
+        return findings
+
+    if not dep_findings and not cx_findings:
+        return findings
+
+    with tempfile.TemporaryDirectory(prefix="daily-dashboard-") as tmp:
+        repo_dir = Path(tmp) / target.repo
+        ado.clone_or_pull(target.checkout_url, repo_dir)
+        ado.checkout_branch(repo_dir, target.target_branch)
+
+        branch = f"daily-dashboard/remediation-{build_id}-{date.today().isoformat()}"
+        ado.create_branch(repo_dir, branch)
+
+        changed_paths: List[Path] = []
+
+        for finding in dep_findings:
             fix_result = fix_dependency(repo_dir, finding)
-            changed = [repo_dir / p for p in fix_result.get("filesChanged") or []]
-            pr_url = None
-            if fix_result.get("success") and changed:
-                pushed = ado.commit_paths(
-                    repo_dir, changed, f"fix: bump {finding.package} to resolve {finding.cve or 'vulnerability'}"
-                )
-                if pushed:
-                    pr_url = ado.create_pr(
-                        branch,
-                        target.target_branch,
-                        title=f"Fix: {finding.package} vulnerability ({finding.cve or 'unknown CVE'})",
-                        description=(
-                            f"Automated fix by daily-dashboard.\n\n{fix_result.get('notes', '')}"
-                        ),
-                        repo_url=target.checkout_url,
-                        repo_dir=repo_dir,
-                    )
-            entries.append(
+            changed_paths.extend(repo_dir / p for p in (fix_result.get("filesChanged") or []))
+            findings.append(
                 _finding_entry(
                     "dependency_scanner",
                     finding,
                     attempted=True,
                     success=fix_result.get("success"),
-                    pr_url=pr_url,
+                    pr_url=None,
                     notes=fix_result.get("notes"),
                 )
             )
-    return entries
 
-
-def _remediate_checkmarx_findings(
-    *,
-    ado: AdoGit,
-    ado_cfg: AdoConfig,
-    target: ScanTarget,
-    findings: List[CheckmarxFinding],
-    dry_run: bool,
-) -> List[Dict[str, Any]]:
-    entries: List[Dict[str, Any]] = []
-    for finding in findings:
-        if dry_run:
-            entries.append(_finding_entry("checkmarx", finding, attempted=False))
-            continue
-        with tempfile.TemporaryDirectory(prefix="daily-dashboard-") as tmp:
-            repo_dir = Path(tmp) / target.repo
-            ado.clone_or_pull(target.checkout_url, repo_dir)
-            safe_rule = "".join(c if c.isalnum() else "-" for c in finding.rule)[:40]
-            branch = f"daily-dashboard/checkmarx-{safe_rule}-{date.today().isoformat()}"
-            ado.create_branch(repo_dir, branch)
+        for finding in cx_findings:
             fix_result = fix_checkmarx_violation(repo_dir, finding)
-            changed = [repo_dir / p for p in fix_result.get("filesChanged") or []]
-            pr_url = None
-            if fix_result.get("success") and changed:
-                pushed = ado.commit_paths(repo_dir, changed, f"fix: address Checkmarx finding {finding.rule}")
-                if pushed:
-                    pr_url = ado.create_pr(
-                        branch,
-                        target.target_branch,
-                        title=f"Security fix: {finding.rule} in {finding.file}",
-                        description=(
-                            f"Automated fix by daily-dashboard. Requires security review before merge.\n\n"
-                            f"{fix_result.get('notes', '')}"
-                        ),
-                        repo_url=target.checkout_url,
-                        repo_dir=repo_dir,
-                    )
-            entries.append(
+            changed_paths.extend(repo_dir / p for p in (fix_result.get("filesChanged") or []))
+            findings.append(
                 _finding_entry(
                     "checkmarx",
                     finding,
                     attempted=True,
                     success=fix_result.get("success"),
-                    pr_url=pr_url,
+                    pr_url=None,
                     notes=fix_result.get("notes"),
                 )
             )
-    return entries
+
+        changed_paths = _dedupe_paths(changed_paths)
+        pr_url = None
+        if changed_paths:
+            pushed = ado.commit_paths(repo_dir, changed_paths, "fix: automated remediation for scan findings")
+            if pushed:
+                pr_url = ado.create_pr(
+                    branch,
+                    target.target_branch,
+                    title=f"Automated security/dependency remediation for build {build_id}",
+                    description=(
+                        "Automated fixes by daily-dashboard for dependency and/or Checkmarx findings. "
+                        "Please review before merge."
+                    ),
+                    repo_url=target.checkout_url,
+                    repo_dir=repo_dir,
+                )
+
+        if pr_url:
+            for entry in findings:
+                if entry["remediation"].get("success"):
+                    entry["remediation"]["prUrl"] = pr_url
+
+    return findings
 
 
 def _violation_counts(findings: List[Dict[str, Any]]) -> Dict[str, int]:
@@ -331,23 +333,22 @@ def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any
             continue
         build_id = latest_build["id"]
 
-        findings: List[Dict[str, Any]] = []
-
+        dep_findings: List[DependencyFinding] = []
         if "dependency_scanner" in target.features:
             dep_findings = _scan_dependency_findings(pipelines, build_id)
-            findings.extend(
-                _remediate_dependency_findings(
-                    ado=ado, ado_cfg=ado_cfg, target=target, findings=dep_findings, dry_run=dry_run
-                )
-            )
 
+        cx_findings: List[CheckmarxFinding] = []
         if any(str(feature).strip().lower() in {"checkmarx", "rabobankcheckmarx"} for feature in target.features):
             cx_findings = _scan_checkmarx_findings(pipelines, build_id, cx_cfg=cx_cfg)
-            findings.extend(
-                _remediate_checkmarx_findings(
-                    ado=ado, ado_cfg=ado_cfg, target=target, findings=cx_findings, dry_run=dry_run
-                )
-            )
+
+        findings = _remediate_all_findings_single_branch(
+            ado=ado,
+            target=target,
+            build_id=build_id,
+            dep_findings=dep_findings,
+            cx_findings=cx_findings,
+            dry_run=dry_run,
+        )
 
         pipelines_report.append(
             {
