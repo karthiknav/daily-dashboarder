@@ -236,6 +236,61 @@ class AdoGit:
         result = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo_dir)
         return result.returncode != 0  # True if there are staged changes
 
+    def _git_config_get(self, repo_dir: Path, key: str) -> str:
+        self._ensure_safe_directory(repo_dir)
+        result = subprocess.run(
+            ["git", "config", "--get", key],
+            cwd=repo_dir,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode != 0:
+            return ""
+        return (result.stdout or "").strip()
+
+    def _ensure_commit_identity(self, repo_dir: Path) -> None:
+        """Ensure `user.name` and `user.email` exist before commit.
+
+        In ephemeral runtimes (for example Databricks jobs), global git config can
+        be missing. We prefer repository-local config and hydrate from environment
+        variables when available.
+        """
+        repo_dir = Path(repo_dir)
+        name = self._git_config_get(repo_dir, "user.name")
+        email = self._git_config_get(repo_dir, "user.email")
+
+        env_name = (
+            os.getenv("GIT_USER_NAME")
+            or os.getenv("GIT_AUTHOR_NAME")
+            or os.getenv("GIT_COMMITTER_NAME")
+            or ""
+        ).strip()
+        env_email = (
+            os.getenv("GIT_USER_EMAIL")
+            or os.getenv("GIT_AUTHOR_EMAIL")
+            or os.getenv("GIT_COMMITTER_EMAIL")
+            or ""
+        ).strip()
+
+        if not name and env_name:
+            self._run(["config", "user.name", env_name], cwd=repo_dir, check=True)
+            name = env_name
+        if not email and env_email:
+            self._run(["config", "user.email", env_email], cwd=repo_dir, check=True)
+            email = env_email
+
+        if name and email:
+            return
+
+        raise ValueError(
+            "Git author identity is not configured for commits. "
+            "Set git config user.name/user.email, or set env vars "
+            "GIT_USER_NAME and GIT_USER_EMAIL "
+            "(alternatively GIT_AUTHOR_NAME/GIT_AUTHOR_EMAIL)."
+        )
+
     # ---------- Public methods ----------
     def clone_or_pull(self, repo_url: str, workdir: Path) -> Path:
         repo_dir = workdir
@@ -324,6 +379,7 @@ class AdoGit:
     def commit_all(self, repo_dir: Path, msg: str):
         self._run(["add", "-A"], cwd=repo_dir, check=True)
         if self._has_staged_changes(repo_dir):
+            self._ensure_commit_identity(repo_dir)
             # sanitize message (convert HTML entities like &amp; to &)
             safe_msg = html.unescape(msg or "")
             self._run(["commit", "-m", safe_msg], cwd=repo_dir, check=True)
@@ -361,6 +417,7 @@ class AdoGit:
         # Stage only requested files.
         self._run(["add", "--"] + unique, cwd=repo_dir, check=True)
         if self._has_staged_changes(repo_dir):
+            self._ensure_commit_identity(repo_dir)
             safe_msg = html.unescape(msg or "")
             self._run(["commit", "-m", safe_msg], cwd=repo_dir, check=True)
             self._run(["push", "-u", "origin", "HEAD"], cwd=repo_dir, check=True)
