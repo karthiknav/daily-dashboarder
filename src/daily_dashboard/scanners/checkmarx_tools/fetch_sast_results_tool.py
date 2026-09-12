@@ -1,45 +1,21 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import os
 from typing import Any, Dict, List
 
 import requests
 
 
-_MOCKED_RESPONSE: Dict[str, Any] = {
-    "results": [
-        {
-            "queryName": "Open*Redirect",
-            "severity": "MEDIUM",
-            "cvssScore": 6.6667,
-            "cweID": 601,
-            "state": "PROPOSED*NOT_EXPLOITABLE",
-            "status": "RECURRENT",
-            "languageName": "java",
-            "nodes": [
-                {
-                    "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward*integrations/features/generate*document/services/GenerateDocumentServiceImpl.java",
-                    "line": 81,
-                    "name": "requestContentStr",
-                    "domType": "UnknownReference",
-                },
-                {
-                    "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward*integrations/features/generate*document/controller/GenerateDocumentControllerImpl.java",
-                    "line": 32,
-                    "name": "requestContentStr",
-                    "domType": "UnknownReference",
-                },
-            ],
-            "foundAt": "2026-09-11T13:08:16Z",
-        }
-    ],
-    "totalCount": 1,
-}
+_MOCK_FILE_PATH = Path(__file__).with_name("mock_sast_results.json")
+with _MOCK_FILE_PATH.open("r", encoding="utf-8") as mock_file:
+    _MOCKED_RESPONSE: Dict[str, Any] = json.load(mock_file)
 
 
 def _extract_primary_location(result: Dict[str, Any]) -> Dict[str, Any]:
-    nodes = result.get("nodes") or []
+    data = result.get("data") or {}
+    nodes = result.get("nodes") or data.get("nodes") or []
     if not nodes:
         return {"file": None, "line": None}
     primary = nodes[0]
@@ -48,15 +24,18 @@ def _extract_primary_location(result: Dict[str, Any]) -> Dict[str, Any]:
 
 def _sanitize_result(result: Dict[str, Any], scan_id: str) -> Dict[str, Any]:
     loc = _extract_primary_location(result)
+    data = result.get("data") or {}
+    vulnerability = result.get("vulnerabilityDetails") or {}
     return {
         "scanId": scan_id,
-        "queryName": result.get("queryName") or "",
+        "queryName": result.get("queryName") or data.get("queryName") or "",
         "severity": result.get("severity"),
-        "cwe": result.get("cweID"),
+        "cwe": result.get("cweID") if result.get("cweID") is not None else vulnerability.get("cweId"),
         "cvss": result.get("cvssScore"),
         "status": result.get("status"),
         "state": result.get("state"),
-        "language": result.get("languageName"),
+        "language": result.get("languageName") or data.get("languageName"),
+        "description": result.get("description"),
         "file": loc["file"],
         "line": loc["line"],
         "foundAt": result.get("foundAt"),

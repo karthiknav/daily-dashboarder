@@ -1,0 +1,544 @@
+{
+  "results": [
+    {
+      "type": "sast",
+      "id": "HKJ+MP0LQse5OueWFtdIj2svbfI=",
+      "alternateId": "HKJ+MP0LQse5OueWFtdIj2svbfI=",
+      "similarityId": "565241740",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "INFO",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2026-05-14T08:05:16Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "description": "Method getRandomNumericId at line 32 of /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/util/Utils.java uses a weak method nextInt to produce random values. These values are then used as cryptographic variables by getRandomNumericId at line 32 in /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/util/Utils.java.\n\n",
+      "data": {
+        "queryId": 11275104079425393675,
+        "queryName": "Use_of_Non_Cryptographic_Random",
+        "group": "Java_Best_Coding_Practice",
+        "resultHash": "HKJ+MP0LQse5OueWFtdIj2svbfI=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "ZSB4Gy642lVAF9hdtVXwg3GM7/Q=",
+            "line": 32,
+            "name": "nextInt",
+            "column": 58,
+            "length": 1,
+            "method": "getRandomNumericId",
+            "nodeID": 99599,
+            "domType": "MethodInvokeExpr",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/util/Utils.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.util.Utils.getRandomNumericId.nextInt",
+            "typeName": "nextInt",
+            "methodLine": 29,
+            "definitions": "0"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 338,
+        "compliances": [
+          "OWASP Top 10 2021",
+          "PCI DSS v4.0",
+          "MOIS(KISA) Secure Coding 2021",
+          "OWASP ASVS"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "1eL8SvFhJS5AHcVCoEp6sjDpxuo=",
+      "alternateId": "1eL8SvFhJS5AHcVCoEp6sjDpxuo=",
+      "similarityId": "335208832",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "LOW",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2025-04-24T09:25:43Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "description": "Public method bytes returns a private array type data member in /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/dto/GenerateDocumentResponseHelper.java\n\n",
+      "data": {
+        "queryId": 15604830191707485643,
+        "queryName": "Private_Array_Returned_From_A_Public_Method",
+        "group": "Java_Low_Visibility",
+        "resultHash": "1eL8SvFhJS5AHcVCoEp6sjDpxuo=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "2yM9akB80V+dnh1RVxAxreWZMto=",
+            "line": 11,
+            "name": "bytes",
+            "column": 20,
+            "length": 5,
+            "nodeID": 47051,
+            "domType": "Declarator",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/dto/GenerateDocumentResponseHelper.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.features.generate_document.dto.GenerateDocumentResponseHelper.bytes",
+            "typeName": "byte",
+            "methodLine": 11,
+            "definitions": "1"
+          },
+          {
+            "id": "C4bE85Lkn3a+lgSreXV6dBxSDFg=",
+            "line": 15,
+            "name": "bytes",
+            "column": 16,
+            "length": 5,
+            "method": "getBytes",
+            "nodeID": 47069,
+            "domType": "UnknownReference",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/dto/GenerateDocumentResponseHelper.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.features.generate_document.dto.GenerateDocumentResponseHelper.bytes",
+            "typeName": "byte",
+            "methodLine": 14,
+            "definitions": "1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 495,
+        "compliances": [
+          "NIST SP 800-53",
+          "OWASP ASVS",
+          "OWASP Top 10 2021",
+          "OWASP Top 10 2025",
+          "PCI DSS v4.0",
+          "ASD STIG 6.1",
+          "MOIS(KISA) Secure Coding 2021"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "hVeLmyAt/qcBCyMiKZk3egqQ0ik=",
+      "alternateId": "hVeLmyAt/qcBCyMiKZk3egqQ0ik=",
+      "similarityId": "-1611502354",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "LOW",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2025-03-19T15:12:50Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "description": "A Content Security Policy is not explicitly defined within the web-application.\n\n",
+      "data": {
+        "queryId": 1421882572503292919,
+        "queryName": "Spring_Missing_Content_Security_Policy",
+        "group": "Java_Spring",
+        "resultHash": "hVeLmyAt/qcBCyMiKZk3egqQ0ik=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "wJ/9wZ5zpLMjzMZToQcel2WEWsw=",
+            "line": 5,
+            "name": "info",
+            "column": 1,
+            "length": 6,
+            "nodeID": 2118,
+            "domType": "Import",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/configuration/ForwardIntegrationsSwaggerConfig.java",
+            "fullName": "org.springframework.boot.info",
+            "methodLine": 5,
+            "definitions": "-1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 346,
+        "compliances": [
+          "OWASP Top 10 2025",
+          "PCI DSS v4.0",
+          "OWASP ASVS",
+          "OWASP Top 10 2021"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "jRQmr3SO0GOo9S0WhjMqLSNPw3Q=",
+      "alternateId": "jRQmr3SO0GOo9S0WhjMqLSNPw3Q=",
+      "similarityId": "-1634444461",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "LOW",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2024-04-04T12:30:06Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "description": "Method handleMissingServletRequestParameter, at line 101 of /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java, handles an Exception or runtime Error ex. During the exception handling code, the application exposes the exception details to buildResponseEntity, in method handleMissingServletRequestParameter of /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java, line 102.\n\n",
+      "data": {
+        "queryId": 2701599985492857111,
+        "queryName": "Information_Exposure_Through_an_Error_Message",
+        "group": "Java_Low_Visibility",
+        "resultHash": "jRQmr3SO0GOo9S0WhjMqLSNPw3Q=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "nF7JOw4mc8senqoT+DeFoJL2r9Q=",
+            "line": 101,
+            "name": "ex",
+            "column": 30,
+            "length": 2,
+            "method": "handleMissingServletRequestParameter",
+            "nodeID": 5831,
+            "domType": "UnknownReference",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.exceptions.ControllerAdvice.handleMissingServletRequestParameter.ex",
+            "typeName": "MissingServletRequestParameterException",
+            "methodLine": 97,
+            "definitions": "1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 209,
+        "compliances": [
+          "OWASP ASVS",
+          "PCI DSS v3.2.1",
+          "NIST SP 800-53",
+          "PCI DSS v4.0",
+          "FISMA 2014",
+          "OWASP Top 10 2025",
+          "OWASP Top 10 API 2023",
+          "MOIS(KISA) Secure Coding 2021",
+          "OWASP Top 10 2021",
+          "SANS top 25",
+          "ASD STIG 6.1"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "MPakJLohD2/kmyS2alPU/pQcaQo=",
+      "alternateId": "MPakJLohD2/kmyS2alPU/pQcaQo=",
+      "similarityId": "1338164092",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "LOW",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2024-04-11T05:40:13Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "description": "Method handleHttpMediaTypeNotSupported, at line 125 of /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java, handles an Exception or runtime Error ex. During the exception handling code, the application exposes the exception details to buildResponseEntity, in method handleHttpMediaTypeNotSupported of /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java, line 126.\n\n",
+      "data": {
+        "queryId": 2701599985492857111,
+        "queryName": "Information_Exposure_Through_an_Error_Message",
+        "group": "Java_Low_Visibility",
+        "resultHash": "MPakJLohD2/kmyS2alPU/pQcaQo=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "yPTk6wU5EIDE7d/GERYzYOsWMEs=",
+            "line": 125,
+            "name": "ex",
+            "column": 9,
+            "length": 2,
+            "method": "handleHttpMediaTypeNotSupported",
+            "nodeID": 5967,
+            "domType": "UnknownReference",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.exceptions.ControllerAdvice.handleHttpMediaTypeNotSupported.ex",
+            "typeName": "HttpMediaTypeNotSupportedException",
+            "methodLine": 116,
+            "definitions": "1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 209,
+        "compliances": [
+          "OWASP ASVS",
+          "PCI DSS v3.2.1",
+          "NIST SP 800-53",
+          "PCI DSS v4.0",
+          "FISMA 2014",
+          "OWASP Top 10 2025",
+          "OWASP Top 10 API 2023",
+          "MOIS(KISA) Secure Coding 2021",
+          "OWASP Top 10 2021",
+          "SANS top 25",
+          "ASD STIG 6.1"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "PC9fpD1kjZEoTlxG8ubd3Bc18TI=",
+      "alternateId": "PC9fpD1kjZEoTlxG8ubd3Bc18TI=",
+      "similarityId": "-1555575010",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "LOW",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2025-08-20T13:41:14Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "data": {
+        "queryId": 1232126000241646059,
+        "queryName": "Integer_Overflow",
+        "group": "Java_Low_Visibility",
+        "resultHash": "PC9fpD1kjZEoTlxG8ubd3Bc18TI=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "a96lRj5G/ARBcPC/T3A3QT3a6ZI=",
+            "line": 22,
+            "name": "terms",
+            "column": 74,
+            "length": 5,
+            "method": "requestAll",
+            "nodeID": 57371,
+            "domType": "ParamDecl",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/imarates/controller/ImaControllerImpl.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.features.imarates.controller.ImaControllerImpl.requestAll.terms",
+            "typeName": "Integer",
+            "methodLine": 22,
+            "definitions": "1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 190,
+        "compliances": [
+          "OWASP Mobile Top 10 2016",
+          "NIST SP 800-53",
+          "PCI DSS v4.0",
+          "SANS top 25",
+          "CWE top 25",
+          "ASD STIG 6.1",
+          "MOIS(KISA) Secure Coding 2021",
+          "FISMA 2014",
+          "OWASP ASVS"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "uIdc5CvCPWqS50Xjxs5kQHc//Xc=",
+      "alternateId": "uIdc5CvCPWqS50Xjxs5kQHc//Xc=",
+      "similarityId": "2021950501",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "LOW",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2024-04-11T05:40:13Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "description": "Method handleHttpMediaTypeNotSupported, at line 123 of /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java, handles an Exception or runtime Error ex. During the exception handling code, the application exposes the exception details to buildResponseEntity, in method handleHttpMediaTypeNotSupported of /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java, line 126.\n\n",
+      "data": {
+        "queryId": 2701599985492857111,
+        "queryName": "Information_Exposure_Through_an_Error_Message",
+        "group": "Java_Low_Visibility",
+        "resultHash": "uIdc5CvCPWqS50Xjxs5kQHc//Xc=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "wrh4dOmK5r9PyrDc8/KSFpf2GkE=",
+            "line": 123,
+            "name": "ex",
+            "column": 24,
+            "length": 2,
+            "method": "handleHttpMediaTypeNotSupported",
+            "nodeID": 5950,
+            "domType": "UnknownReference",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/exceptions/ControllerAdvice.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.exceptions.ControllerAdvice.handleHttpMediaTypeNotSupported.ex",
+            "typeName": "HttpMediaTypeNotSupportedException",
+            "methodLine": 116,
+            "definitions": "1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 209,
+        "compliances": [
+          "OWASP ASVS",
+          "PCI DSS v3.2.1",
+          "NIST SP 800-53",
+          "PCI DSS v4.0",
+          "FISMA 2014",
+          "OWASP Top 10 2025",
+          "OWASP Top 10 API 2023",
+          "MOIS(KISA) Secure Coding 2021",
+          "OWASP Top 10 2021",
+          "SANS top 25",
+          "ASD STIG 6.1"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "Wpav5GsgkGdAWTesIXJoUoLENJM=",
+      "alternateId": "Wpav5GsgkGdAWTesIXJoUoLENJM=",
+      "similarityId": "665505297",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "LOW",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2025-08-20T13:41:14Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "description": "The value in terms at /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/imarates/controller/ImaControllerImpl.java in line 22 is used in an arithmetic operation in b2 at /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/imarates/services/ImaServiceImpl.java in line 85 without validation, which may result in an arithmetic overflow.\n\n",
+      "data": {
+        "queryId": 4933893948669676791,
+        "queryName": "Integer_Underflow",
+        "group": "Java_Low_Visibility",
+        "resultHash": "Wpav5GsgkGdAWTesIXJoUoLENJM=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "a96lRj5G/ARBcPC/T3A3QT3a6ZI=",
+            "line": 22,
+            "name": "terms",
+            "column": 74,
+            "length": 5,
+            "method": "requestAll",
+            "nodeID": 57371,
+            "domType": "ParamDecl",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/imarates/controller/ImaControllerImpl.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.features.imarates.controller.ImaControllerImpl.requestAll.terms",
+            "typeName": "Integer",
+            "methodLine": 22,
+            "definitions": "1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 191,
+        "compliances": [
+          "CWE top 25",
+          "MOIS(KISA) Secure Coding 2021",
+          "OWASP ASVS",
+          "OWASP Mobile Top 10 2016",
+          "SANS top 25"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "xVcjuH+6bCNn9kq0ex1DWScMDLU=",
+      "alternateId": "xVcjuH+6bCNn9kq0ex1DWScMDLU=",
+      "similarityId": "-1471638267",
+      "status": "RECURRENT",
+      "state": "TO_VERIFY",
+      "severity": "LOW",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2025-04-24T09:25:43Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "b448c009-6303-4f90-985f-c2cf2c005882",
+      "description": "Public data bytes assigned to a private array type data member in line 11. This may allow writing of arbitrary data into the private array.\n\n",
+      "data": {
+        "queryId": 6960834175274174183,
+        "queryName": "Public_Data_Assigned_to_Private_Array",
+        "group": "Java_Low_Visibility",
+        "resultHash": "xVcjuH+6bCNn9kq0ex1DWScMDLU=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "rBv4tHs92z4V0hE2yQZhNAYnTJw=",
+            "line": 18,
+            "name": "bytes",
+            "column": 33,
+            "length": 5,
+            "method": "setBytes",
+            "nodeID": 47093,
+            "domType": "ParamDecl",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/dto/GenerateDocumentResponseHelper.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.features.generate_document.dto.GenerateDocumentResponseHelper.setBytes.bytes",
+            "typeName": "byte",
+            "methodLine": 18,
+            "definitions": "1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 496,
+        "compliances": [
+          "PCI DSS v4.0",
+          "MOIS(KISA) Secure Coding 2021",
+          "OWASP ASVS",
+          "OWASP Top 10 2021",
+          "OWASP Top 10 2025"
+        ]
+      }
+    },
+    {
+      "type": "sast",
+      "id": "gblnx55Ny+V4hKeh5r7RevKev24=",
+      "alternateId": "gblnx55Ny+V4hKeh5r7RevKev24=",
+      "similarityId": "46903517",
+      "status": "RECURRENT",
+      "state": "PROPOSED_NOT_EXPLOITABLE",
+      "severity": "MEDIUM",
+      "confidenceLevel": 0,
+      "created": "2026-09-11T13:08:16Z",
+      "firstFoundAt": "2026-01-26T13:26:41Z",
+      "foundAt": "2026-09-11T13:08:16Z",
+      "firstScanId": "333a8cfb-de75-4a74-b7a5-5dd1aca90cab",
+      "description": "The potentially tainted value provided by requestContentStr in /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/controller/GenerateDocumentControllerImpl.java at line 31 is used as a destination URL by ReturnStmt in /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/controller/GenerateDocumentControllerImpl.java at line 33, potentially allowing attackers to perform an open redirection.\n\n",
+      "data": {
+        "queryId": 5854466950125120303,
+        "queryName": "Open_Redirect",
+        "group": "Java_Medium_Threat",
+        "resultHash": "gblnx55Ny+V4hKeh5r7RevKev24=",
+        "languageName": "Java",
+        "nodes": [
+          {
+            "id": "H4wXipXghxLDTLXMcP3gnZSt6cc=",
+            "line": 31,
+            "name": "requestContentStr",
+            "column": 123,
+            "length": 17,
+            "method": "generateDocument",
+            "nodeID": 49534,
+            "domType": "ParamDecl",
+            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/controller/GenerateDocumentControllerImpl.java",
+            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.features.generate_document.controller.GenerateDocumentControllerImpl.generateDocument.requestContentStr",
+            "typeName": "String",
+            "methodLine": 31,
+            "definitions": "1"
+          }
+        ]
+      },
+      "comments": {},
+      "vulnerabilityDetails": {
+        "cweId": 601,
+        "compliances": [
+          "ASD STIG 6.1",
+          "MOIS(KISA) Secure Coding 2021",
+          "FISMA 2014",
+          "OWASP Top 10 2025",
+          "PCI DSS v4.0",
+          "ASA Premium",
+          "NIST SP 800-53",
+          "OWASP ASVS",
+          "OWASP Top 10 2021",
+          "PCI DSS v3.2.1",
+          "OWASP Top 10 API 2023"
+        ]
+      }
+    }
+  ],
+  "totalCount": 10
+}
