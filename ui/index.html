@@ -3,13 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#030b14">
-  <meta name="description" content="Virtual Scrum Master operations wall: engineering health, delivery, incidents, vulnerabilities and certificates.">
-  <title>Operations Wall</title>
+  <meta name="theme-color" content="#020a12">
+  <meta name="description" content="Daily Dashboard: dependency-scanner and Checkmarx violations, pipeline health, expiring certificates and announcements from the daily_scan.py report.">
+  <title>Daily Dashboard</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="vendor/rabo-scanner/rabo-scanner.css">
-  <script src="vendor/rabo-scanner/rabo-scanner.js" defer></script>
   <script src="js/icons.js" defer></script>
   <script src="js/charts.js" defer></script>
   <script src="js/data-loader.js" defer></script>
@@ -19,632 +17,95 @@
   <a class="skip-link" href="#main">Skip to dashboard</a>
   <header class="topbar">
     <button class="mobile-menu icon-button" id="menu-toggle" aria-label="Toggle navigation" aria-expanded="false" data-icon="menu"></button>
-    <a class="brand" href="#operations-wall" aria-label="Operations Wall home">
+    <a class="brand" href="#" data-page="overview" aria-label="Daily Dashboard home">
       <img src="assets/favicon.svg" width="42" height="42" alt="">
-      <span><h1>Operations Wall</h1><span class="subtitle">Local JSON data</span></span>
+      <span><h1>Daily Dashboard</h1><span class="subtitle" id="source-label">No report loaded</span></span>
     </a>
-    <select id="team-select" aria-label="Team"><option>All Teams</option></select>
     <div class="header-actions">
-      <time id="snapshot-time"></time>
+      <time id="snapshot-time" hidden></time>
       <button class="icon-button" id="fullscreen" aria-label="Toggle fullscreen" title="Fullscreen" data-icon="monitor"></button>
-      <button class="icon-button" id="refresh" aria-label="Reload dashboard data" title="Reload embedded chart data" data-icon="refresh"></button>
-      <button class="icon-button" data-action="choose-backend-json" aria-label="Load backend report JSON" title="Load backend report JSON" data-icon="report"></button>
-      <button class="icon-button" data-action="settings" aria-label="Settings" title="Settings" data-icon="settings"></button>
-      <button class="icon-button" data-action="scanner" aria-label="Open RaboBank Dependency Scanner" title="RaboBank Dependency Scanner" data-icon="scan"></button>
-      <button class="icon-button notification" data-action="alerts" aria-label="View alerts" title="Alerts"><span data-icon="bell"></span><span id="notification-count" class="badge"></span></button>
-      <div class="profile"><span class="avatar" aria-hidden="true">AI<span class="online-dot"></span></span><span><strong id="user-name"></strong><small id="user-role"></small></span></div>
+      <button class="icon-button" id="load-report" aria-label="Load report JSON" title="Load report JSON" data-icon="report"></button>
     </div>
   </header>
   <div class="workspace">
     <aside class="sidebar" id="sidebar">
       <nav id="side-nav" aria-label="Main navigation"></nav>
-      <div class="assistant-box">
-        <div class="assistant-status"><span class="bot-icon" data-icon="bot"></span><div><span id="assistant-name"></span><small><span class="online-dot"></span> <span id="assistant-status"></span></small></div></div>
-        <button class="copilot-button" data-action="copilot"><span data-icon="sparkles"></span> <span id="assistant-button-label"></span></button>
-      </div>
     </aside>
     <main id="main" tabindex="-1">
       <div id="error-banner" class="error-banner" role="alert" hidden></div>
-      <div id="scanner-error" class="error-banner" role="alert" hidden></div>
-      <input id="scanner-file" type="file" accept=".json,application/json" hidden>
-      <input id="backend-report-file" type="file" accept=".json,application/json" hidden>
-      <div id="loading" role="status" hidden>Loading data…</div>
-      <section id="kpis" class="kpi-grid" aria-label="Engineering summary"></section>
-      <div class="charts-grid" id="chart-grid">
-        <section class="panel pipeline-panel" id="pipeline" aria-labelledby="pipeline-title"><div class="panel-heading"><h2 id="pipeline-title"></h2><button class="text-link" data-detail="pipeline"></button></div><div id="pipeline-content" class="pipeline-content"></div></section>
-        <section class="panel incidents-panel" id="incidents" aria-labelledby="incidents-title"><div class="panel-heading"><h2 id="incidents-title"></h2></div><div id="incidents-content" class="chart-and-legend"></div></section>
-        <section class="panel environment-panel" id="environments" aria-labelledby="environment-title"><div class="panel-heading"><h2 id="environment-title"></h2></div><div id="environment-content" class="table-wrap"></div><button class="text-link panel-footer" data-detail="environments"></button></section>
-        <section class="panel vulnerability-panel" id="vulnerabilities" aria-labelledby="vulnerability-title"><div class="panel-heading"><h2 id="vulnerability-title"></h2></div><div id="vulnerability-content" class="vulnerability-content"></div><button class="text-link panel-footer" data-detail="vulnerabilities"></button></section>
-        <section class="panel top-vulnerability-panel" id="top-vulnerabilities" aria-labelledby="top-vulnerability-title"><div class="panel-heading"><h2 id="top-vulnerability-title"></h2><small id="severity-heading"></small></div><div id="top-vulnerability-content" class="table-wrap"></div><button class="text-link panel-footer" data-detail="vulnerabilities"></button></section>
-        <section class="panel certificate-panel" id="certificates" aria-labelledby="certificate-title"><div class="panel-heading"><h2 id="certificate-title"></h2></div><div id="certificate-content" class="table-wrap"></div><button class="text-link panel-footer" data-detail="certificates"></button></section>
-        <section class="panel dependency-report-panel" id="dependency-scanner" aria-labelledby="dependency-scanner-title"><div class="panel-heading"><h2 id="dependency-scanner-title">Dependency Scanner Findings</h2><button class="text-link" data-action="choose-backend-json">Load JSON</button></div><div id="dependency-scanner-content" class="table-wrap"></div></section>
-        <section class="panel checkmarx-report-panel" id="checkmarx" aria-labelledby="checkmarx-title"><div class="panel-heading"><h2 id="checkmarx-title">Checkmarx Findings</h2><button class="text-link" data-action="choose-backend-json">Load JSON</button></div><div id="checkmarx-content" class="table-wrap"></div></section>
-        <section class="panel pipeline-findings-panel" id="pipeline-findings" aria-labelledby="pipeline-findings-title"><div class="panel-heading"><h2 id="pipeline-findings-title">Pipeline Findings</h2><button class="text-link" data-action="choose-backend-json">Refresh source</button></div><div id="pipeline-findings-content" class="table-wrap"></div></section>
+      <input id="report-file" type="file" accept=".json,application/json" hidden>
+
+      <div id="empty-state" class="data-source">
+        <div>
+          <h2>Load the daily-scan report</h2>
+          <p>Select the JSON produced by <code>daily-dashboard scan</code> (<code>write_report()</code> output) to populate this dashboard. No server, upload or internet connection is used &mdash; the file is read locally in your browser.</p>
+        </div>
+        <button class="json-button" data-action="load-report">Load report JSON</button>
+      </div>
+
+      <div id="dashboard" hidden>
+        <section id="page-overview" class="page" aria-labelledby="overview-heading">
+          <div class="page-heading"><h2 id="overview-heading">Overview</h2></div>
+          <section id="kpis" class="kpi-grid" aria-label="Summary"></section>
+          <div class="overview-charts" id="overview-charts"></div>
+        </section>
+
+        <section id="page-dependency_scanner" class="page" hidden aria-labelledby="dependency-heading">
+          <div class="page-heading">
+            <h2 id="dependency-heading">Dependency Scanner Violations</h2>
+            <div class="page-filters" data-category="dependency_scanner">
+              <select class="severity-filter" aria-label="Filter by severity">
+                <option value="">All severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <label class="checkbox-filter"><input type="checkbox" class="ready-pr-filter"> Only pipelines with ready PRs</label>
+            </div>
+          </div>
+          <div id="dependency_scanner-content"></div>
+        </section>
+
+        <section id="page-checkmarx" class="page" hidden aria-labelledby="checkmarx-heading">
+          <div class="page-heading">
+            <h2 id="checkmarx-heading">Checkmarx Violations</h2>
+            <div class="page-filters" data-category="checkmarx">
+              <select class="severity-filter" aria-label="Filter by severity">
+                <option value="">All severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <label class="checkbox-filter"><input type="checkbox" class="ready-pr-filter"> Only pipelines with ready PRs</label>
+            </div>
+          </div>
+          <div id="checkmarx-content"></div>
+        </section>
+
+        <section id="page-pipelines" class="page" hidden aria-labelledby="pipelines-heading">
+          <div class="page-heading"><h2 id="pipelines-heading">Pipelines</h2><small>Sorted with failed builds first</small></div>
+          <div id="pipelines-content" class="table-wrap"></div>
+        </section>
+
+        <section id="page-certificates" class="page" hidden aria-labelledby="certificates-heading">
+          <div class="page-heading">
+            <h2 id="certificates-heading">Certificates</h2>
+            <label class="checkbox-filter"><input type="checkbox" id="certificates-show-all"> Show all certificates</label>
+          </div>
+          <div id="certificates-content" class="table-wrap"></div>
+        </section>
+
+        <section id="page-announcements" class="page" hidden aria-labelledby="announcements-heading">
+          <div class="page-heading"><h2 id="announcements-heading">Announcements</h2></div>
+          <div id="announcements-content"></div>
+        </section>
       </div>
     </main>
   </div>
-  <footer class="bottom-bar"><span id="integration-caption"></span><nav id="integrations" aria-label="Integrated tools"></nav><button class="auto-refresh" data-action="choose-backend-json"><span class="online-dot"></span> Backend Report JSON</button></footer>
-  <dialog id="detail-dialog" aria-labelledby="dialog-title"><div class="dialog-heading"><h2 id="dialog-title"></h2><button class="icon-button" id="close-dialog" aria-label="Close dialog" data-icon="close"></button></div><div id="dialog-body"></div></dialog>
+  <footer class="bottom-bar"><span id="footer-note">Data source: none loaded</span></footer>
   <div id="toast" class="toast" role="status" hidden></div>
-  <noscript><p class="error-banner">Enable JavaScript to display the dashboard data embedded in this HTML.</p></noscript>
-  <script type="application/json" id="dashboard-data">
-{
-  "meta": {
-    "schemaVersion": 1,
-    "snapshotAt": "2025-05-21T10:30:45Z",
-    "user": {
-      "name": "Ananya Iyer",
-      "role": "Scrum Master"
-    },
-    "dataMode": "Demo snapshot"
-  },
-  "navigation": [
-    {
-      "label": "Operations Wall",
-      "icon": "wall",
-      "target": "operations-wall"
-    },
-    {
-      "label": "Overview",
-      "icon": "overview",
-      "target": "overview"
-    },
-    {
-      "label": "Pipelines",
-      "icon": "pipeline",
-      "target": "pipeline"
-    },
-    {
-      "label": "Incidents",
-      "icon": "warning",
-      "target": "incidents"
-    },
-    {
-      "label": "Vulnerabilities",
-      "icon": "shield",
-      "target": "vulnerabilities"
-    },
-    {
-      "label": "Health Checks",
-      "icon": "checkshield",
-      "target": "environments"
-    },
-    {
-      "label": "Compliance",
-      "icon": "clipboard",
-      "target": "compliance"
-    },
-    {
-      "label": "Certificates",
-      "icon": "checkshield",
-      "target": "certificates"
-    },
-    {
-      "label": "Jobs & Schedules",
-      "icon": "calendar",
-      "target": "jobs"
-    },
-    {
-      "label": "Announcements",
-      "icon": "announcement",
-      "target": "announcements"
-    },
-    {
-      "label": "Reports",
-      "icon": "report",
-      "target": "reports"
-    },
-    {
-      "label": "Settings",
-      "icon": "settings",
-      "target": "settings"
-    }
-  ],
-  "integrations": [
-    {
-      "name": "Azure DevOps",
-      "icon": "cube",
-      "color": "#009ce7",
-      "description": "Pipeline runs and deployment status from the demo snapshot."
-    },
-    {
-      "name": "GitHub",
-      "icon": "code",
-      "color": "#f4f4fc",
-      "description": "Source control integration menu. No account is connected in this standalone demo."
-    },
-    {
-      "name": "Jenkins",
-      "icon": "bot",
-      "color": "#eac6b8",
-      "description": "Build automation integration menu. No server is connected in this standalone demo."
-    },
-    {
-      "name": "Checkmarx",
-      "icon": "check",
-      "color": "#36aa50",
-      "description": "Security findings represented by the vulnerability data in this snapshot."
-    },
-    {
-      "name": "SonarQube",
-      "icon": "sonar",
-      "color": "#27b2ff",
-      "description": "Code quality integration menu. No server is connected in this standalone demo."
-    },
-    {
-      "name": "ServiceNow",
-      "icon": "overview",
-      "color": "#68c772",
-      "description": "Incident severity and environment information from the snapshot."
-    },
-    {
-      "name": "Azure Monitor",
-      "icon": "monitor",
-      "color": "#66b6ff",
-      "description": "Environment health and seven-day trends from the snapshot."
-    },
-    {
-      "name": "Dynatrace",
-      "icon": "cube",
-      "color": "#a4da27",
-      "description": "Observability integration menu. No account is connected in this standalone demo."
-    },
-    {
-      "name": "Teams",
-      "icon": "teams",
-      "color": "#8880f8",
-      "description": "Collaboration integration menu. This demo does not send messages."
-    },
-    {
-      "name": "RaboBank Dependency Scanner",
-      "icon": "scan",
-      "color": "#ff8c21",
-      "description": "Displays the dependencies from the separately selected rabo-dependency-scanner.json file.",
-      "action": "scanner"
-    },
-    {
-      "name": "Kafka",
-      "icon": "pipeline",
-      "color": "#e5e7eb",
-      "description": "Additional integration menu entry; no broker is connected."
-    },
-    {
-      "name": "Splunk",
-      "icon": "code",
-      "color": "#66c971",
-      "description": "Additional integration menu entry; no service is connected."
-    }
-  ],
-  "kpis": [
-    {
-      "id": "dependency-scanner",
-      "title": "RaboBank Dependency Scanner",
-      "value": 0,
-      "source": "scanner",
-      "label": "Reported dependencies",
-      "icon": "scan",
-      "color": "#ff8c21",
-      "action": "scanner",
-      "change": null
-    },
-    {
-      "title": "ENGINEERING HEALTH SCORE",
-      "value": 92,
-      "label": "Excellent",
-      "icon": "health",
-      "color": "#36bd65",
-      "change": {
-        "arrow": "↑",
-        "value": "8 pts",
-        "suffix": "vs last week"
-      }
-    },
-    {
-      "title": "CRITICAL ISSUES",
-      "value": 7,
-      "label": "Critical",
-      "icon": "shield",
-      "color": "#f33b3a",
-      "change": {
-        "arrow": "↓",
-        "value": "2",
-        "suffix": "vs yesterday"
-      },
-      "id": "critical-issues"
-    },
-    {
-      "title": "OPEN INCIDENTS",
-      "value": 11,
-      "label": "Total",
-      "icon": "warning",
-      "color": "#ff8714",
-      "change": {
-        "arrow": "↓",
-        "value": "1",
-        "suffix": "vs yesterday"
-      },
-      "source": "incidents"
-    },
-    {
-      "title": "PIPELINE FAILURES (PROD)",
-      "value": 3,
-      "label": "High",
-      "icon": "pipeline",
-      "color": "#a258eb",
-      "change": {
-        "arrow": "↑",
-        "value": "1",
-        "suffix": "vs yesterday"
-      }
-    },
-    {
-      "title": "VULNERABILITIES",
-      "value": 47,
-      "label": "Total",
-      "icon": "bug",
-      "color": "#f24149",
-      "change": {
-        "arrow": "↑",
-        "value": "6",
-        "suffix": "vs yesterday"
-      },
-      "source": "vulnerabilities"
-    },
-    {
-      "title": "EXPIRING CERTIFICATES",
-      "value": 5,
-      "label": "Within 30 days",
-      "icon": "certificate",
-      "color": "#ffc400",
-      "change": null,
-      "source": "certificates"
-    }
-  ],
-  "pipeline": {
-    "summary": [
-      {
-        "label": "Success",
-        "value": 18,
-        "color": "#22b966"
-      },
-      {
-        "label": "Failed",
-        "value": 6,
-        "color": "#f04035"
-      },
-      {
-        "label": "Partially Succeeded",
-        "value": 2,
-        "color": "#f7c724"
-      },
-      {
-        "label": "Running",
-        "value": 2,
-        "color": "#1576e5"
-      }
-    ],
-    "daily": {
-      "labels": [
-        "May 15",
-        "May 16",
-        "May 17",
-        "May 18",
-        "May 20",
-        "May 21"
-      ],
-      "series": [
-        {
-          "label": "Running",
-          "color": "#1479e5",
-          "values": [
-            2,
-            2,
-            2,
-            4,
-            4,
-            5
-          ]
-        },
-        {
-          "label": "Partially Succeeded",
-          "color": "#f9cc22",
-          "values": [
-            0,
-            4,
-            4,
-            0,
-            0,
-            0
-          ]
-        },
-        {
-          "label": "Failed",
-          "color": "#e83c35",
-          "values": [
-            16,
-            10,
-            10,
-            11,
-            11,
-            10
-          ]
-        },
-        {
-          "label": "Success",
-          "color": "#1bb766",
-          "values": [
-            12,
-            9,
-            12,
-            17,
-            19,
-            22
-          ]
-        }
-      ]
-    },
-    "note": "The summary shows the latest status of 28 tracked pipeline runs. The daily chart shows a separate daily execution-volume series, reproduced from the reference. These two series are intentionally not additive."
-  },
-  "incidents": {
-    "severity": [
-      {
-        "label": "Sev-1",
-        "value": 1,
-        "color": "#ef4039"
-      },
-      {
-        "label": "Sev-2",
-        "value": 3,
-        "color": "#fc8116"
-      },
-      {
-        "label": "Sev-3",
-        "value": 5,
-        "color": "#ffd027"
-      },
-      {
-        "label": "Sev-4",
-        "value": 2,
-        "color": "#259857"
-      }
-    ]
-  },
-  "environments": [
-    {
-      "name": "Production",
-      "healthScore": 98.5,
-      "status": "Healthy",
-      "trend": [
-        98.6,
-        98.4,
-        98.8,
-        98.7,
-        98.0,
-        98.9,
-        98.5
-      ]
-    },
-    {
-      "name": "Test",
-      "healthScore": 96.2,
-      "status": "Healthy",
-      "trend": [
-        95.8,
-        96.5,
-        95.9,
-        96.5,
-        96.0,
-        96.6,
-        96.2
-      ]
-    },
-    {
-      "name": "Staging",
-      "healthScore": 92.1,
-      "status": "Warning",
-      "trend": [
-        91.5,
-        92.7,
-        92.1,
-        91.3,
-        92.5,
-        91.6,
-        92.1
-      ]
-    },
-    {
-      "name": "Pre-Prod",
-      "healthScore": 95.0,
-      "status": "Healthy",
-      "trend": [
-        94.4,
-        95.0,
-        94.6,
-        95.2,
-        94.5,
-        95.1,
-        95.0
-      ]
-    }
-  ],
-  "vulnerabilities": {
-    "severity": [
-      {
-        "label": "Critical",
-        "value": 12,
-        "color": "#ef4038"
-      },
-      {
-        "label": "High",
-        "value": 15,
-        "color": "#f98515"
-      },
-      {
-        "label": "Medium",
-        "value": 14,
-        "color": "#f9c523"
-      },
-      {
-        "label": "Low",
-        "value": 6,
-        "color": "#23a55b"
-      }
-    ],
-    "top": [
-      {
-        "title": "Log4j vulnerability in Service A",
-        "severity": "Critical"
-      },
-      {
-        "title": "SQL injection in User API",
-        "severity": "High"
-      },
-      {
-        "title": "Outdated OpenSSL library",
-        "severity": "High"
-      },
-      {
-        "title": "Insecure deserialization in Service B",
-        "severity": "Medium"
-      },
-      {
-        "title": "Weak cipher suites enabled",
-        "severity": "Medium"
-      }
-    ]
-  },
-  "certificates": [
-    {
-      "name": "api.bank.com",
-      "environment": "Production",
-      "expiresInDays": 12
-    },
-    {
-      "name": "*.rabobank.com",
-      "environment": "Production",
-      "expiresInDays": 18
-    },
-    {
-      "name": "internal.service.local",
-      "environment": "Test",
-      "expiresInDays": 24
-    },
-    {
-      "name": "admin.portal.com",
-      "environment": "Production",
-      "expiresInDays": 28
-    },
-    {
-      "name": "payments.api.com",
-      "environment": "Pre-Prod",
-      "expiresInDays": 29
-    }
-  ],
-  "menuContent": {
-    "jobs": {
-      "title": "Jobs & Schedules",
-      "description": "The jobs panel is outside the six-panel view. Add your schedule details to menuContent.jobs.items in the dashboard-data JSON block in index.html.",
-      "items": []
-    },
-    "announcements": {
-      "title": "Team Announcements",
-      "description": "Announcements from the reference snapshot.",
-      "items": [
-        "Release Freeze this Friday — DevOps Team",
-        "Security Patch Deployment on May 25 — Security Team",
-        "Townhall on AI in Engineering – May 30 — Engineering Leadership"
-      ]
-    },
-    "compliance": {
-      "title": "Compliance",
-      "description": "No compliance records are included in the dashboard snapshot.",
-      "items": []
-    }
-  },
-  "ui": {
-    "title": "Virtual Scrum Master – Operations Wall",
-    "subtitle": "Real-time Engineering & Delivery Intelligence",
-    "team": "All Teams",
-    "assistantName": "AI Scrum Master",
-    "assistantStatus": "Online",
-    "assistantButton": "Ask Copilot",
-    "panels": [
-      {
-        "id": "pipeline-title",
-        "title": "PIPELINE STATUS",
-        "subtitle": "(Last 7 Days)",
-        "detail": "pipeline",
-        "link": "View all pipelines"
-      },
-      {
-        "id": "incidents-title",
-        "title": "INCIDENTS OVERVIEW",
-        "subtitle": "",
-        "detail": "incidents",
-        "link": "View all incidents"
-      },
-      {
-        "id": "environment-title",
-        "title": "ENVIRONMENT HEALTH",
-        "subtitle": "(Snapshot)",
-        "detail": "environments",
-        "link": "View all environments"
-      },
-      {
-        "id": "vulnerability-title",
-        "title": "VULNERABILITIES BY SEVERITY",
-        "subtitle": "",
-        "detail": "vulnerabilities",
-        "link": "View all vulnerabilities"
-      },
-      {
-        "id": "top-vulnerability-title",
-        "title": "TOP VULNERABILITIES",
-        "subtitle": "",
-        "detail": "vulnerabilities",
-        "link": "View all vulnerabilities"
-      },
-      {
-        "id": "certificate-title",
-        "title": "EXPIRING CERTIFICATES",
-        "subtitle": "",
-        "detail": "certificates",
-        "link": "View all certificates"
-      }
-    ],
-    "tables": {
-      "environment": [
-        "Environment",
-        "Health Score",
-        "Status",
-        "Trend (7D)"
-      ],
-      "certificate": [
-        "Certificate",
-        "Environment",
-        "Expires In"
-      ],
-      "summary": [
-        "Status",
-        "Count",
-        "Share"
-      ],
-      "vulnerabilitySeverity": "Severity"
-    },
-    "charts": {
-      "pipelineTotal": "Total Runs",
-      "total": "Total",
-      "pipelineBars": "Pipeline execution volume by day",
-      "vulnerabilityBars": "Vulnerability counts by severity"
-    },
-    "integrationCaption": "Data aggregated from {count} integrated tools"
-  },
-  "healthRules": {
-    "certificateWarningDays": 30,
-    "certificateCriticalDays": 14,
-    "healthyStatus": "Healthy"
-  }
-}
-  </script>
+  <noscript><p class="error-banner">Enable JavaScript to display the dashboard.</p></noscript>
 </body>
 </html>

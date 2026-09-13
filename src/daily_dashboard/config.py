@@ -38,6 +38,16 @@ class ScanTarget:
     features: List[str]
 
 
+@dataclass
+class GraphConfig:
+    tenant_id: str
+    client_id: str
+    client_secret: str
+    mailbox: str
+    lookback_hours: int
+    folder: str = "inbox"
+
+
 def load_ado_config() -> AdoConfig:
     org_url = os.environ.get("ADO_ORG_URL", "")
     pat = os.environ.get("ADO_PAT") or os.environ.get("AZDO_PAT", "")
@@ -51,6 +61,26 @@ def load_checkmarx_config() -> CheckmarxConfig:
     return CheckmarxConfig(
         task_name=os.environ.get("CHECKMARX_TASK_NAME", "RabobankCheckmarx"),
         min_severity=os.environ.get("CHECKMARX_MIN_SEVERITY", "medium"),
+    )
+
+
+def load_graph_config() -> Optional[GraphConfig]:
+    """Announcements are an optional feature: return None (rather than raising)
+    when Microsoft Graph credentials aren't configured, so the scan still runs
+    for deployments that haven't set up a mailbox yet."""
+    tenant_id = os.environ.get("MS_GRAPH_TENANT_ID", "")
+    client_id = os.environ.get("MS_GRAPH_CLIENT_ID", "")
+    client_secret = os.environ.get("MS_GRAPH_CLIENT_SECRET", "")
+    mailbox = os.environ.get("MS_GRAPH_MAILBOX", "")
+    if not (tenant_id and client_id and client_secret and mailbox):
+        return None
+    return GraphConfig(
+        tenant_id=tenant_id,
+        client_id=client_id,
+        client_secret=client_secret,
+        mailbox=mailbox,
+        lookback_hours=int(os.environ.get("ANNOUNCEMENTS_LOOKBACK_HOURS", "24")),
+        folder=os.environ.get("MS_GRAPH_MAIL_FOLDER", "inbox"),
     )
 
 

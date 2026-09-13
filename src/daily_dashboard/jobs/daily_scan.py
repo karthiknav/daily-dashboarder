@@ -12,16 +12,26 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 
-from ..config import AdoConfig, CheckmarxConfig, ScanTarget, load_ado_config, load_checkmarx_config, load_targets
+from ..config import (
+    AdoConfig,
+    CheckmarxConfig,
+    ScanTarget,
+    load_ado_config,
+    load_checkmarx_config,
+    load_graph_config,
+    load_targets,
+)
 from ..core.ado_git import AdoGit
 from ..core.ado_pipelines import AdoPipelines
+from ..core.ms_graph import MsGraphMail
 from ..remediation.checkmarx_fixer import fix_checkmarx_violation
 from ..remediation.dependency_fixer import fix_dependency
 from ..scanners import dependency_scanner
+from ..scanners.announcement_scanner import parse_messages, summarize_announcements
 from ..scanners.checkmarx_investigator import investigate_checkmarx_task_logs
 from ..scanners.checkmarx_scanner import filter_by_min_severity
 from ..scanners.checkmarx_scanner import CheckmarxFinding
@@ -276,34 +286,53 @@ def _remediate_all_findings_single_branch(
     return findings
 
 
-def _violation_counts(findings: List[Dict[str, Any]]) -> Dict[str, int]:
+_FAILED_BUILD_RESULTS = {"failed", "partiallysucceeded", "canceled"}
+
+
+def _violation_counts(findings: List[Dict[str, Any]]) -> Dict[str, Any]:
     counts: Dict[str, int] = {}
+    by_severity: Dict[str, int] = {}
     for entry in findings:
         category = entry["category"]
         counts[category] = counts.get(category, 0) + 1
+        severity = (entry.get("severity") or "").strip().lower()
+        if severity:
+            by_severity[severity] = by_severity.get(severity, 0) + 1
     counts["total"] = len(findings)
+    counts["bySeverity"] = by_severity
     return counts
 
 
 def _build_summary(pipelines: List[Dict[str, Any]]) -> Dict[str, Any]:
     total_violations = 0
     by_category: Dict[str, int] = {}
+    by_severity: Dict[str, int] = {}
     ready_pr_count = 0
     total_pipelines = 0
+    pipelines_failed = 0
     for entry in pipelines:
         if "error" in entry:
             continue
         total_pipelines += 1
+        if (entry.get("buildResult") or "").strip().lower() in _FAILED_BUILD_RESULTS:
+            pipelines_failed += 1
         for finding in entry.get("findings", []):
             total_violations += 1
             by_category[finding["category"]] = by_category.get(finding["category"], 0) + 1
+            severity = (finding.get("severity") or "").strip().lower()
+            if severity:
+                by_severity[severity] = by_severity.get(severity, 0) + 1
             if finding["remediation"].get("prUrl"):
                 ready_pr_count += 1
     return {
         "totalPipelines": total_pipelines,
+        "pipelinesFailed": pipelines_failed,
         "totalViolations": total_violations,
         "violationsByCategory": by_category,
+        "violationsBySeverity": by_severity,
         "readyPrCount": ready_pr_count,
+        "certificatesExpiringSoon": 0,
+        "unreadAnnouncements": 0,
     }
 
 
@@ -353,6 +382,30 @@ def _bootstrap_openai_token_from_dbutils() -> None:
     except Exception:
         # Non-Databricks/local runs should continue without hard failure.
         return
+
+
+def _fetch_announcements() -> Tuple[List[Dict[str, Any]], int]:
+    """Fetch recent mail via Microsoft Graph and LLM-summarize it into the
+    dashboard's announcements list. Returns ([], 0) when Graph isn't configured
+    (see load_graph_config) or when the fetch/summarize step fails, so a
+    mailbox outage never blocks the rest of the scan."""
+    graph_cfg = load_graph_config()
+    if not graph_cfg:
+        return [], 0
+
+    try:
+        since_iso = (datetime.now(timezone.utc) - timedelta(hours=graph_cfg.lookback_hours)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        graph = MsGraphMail(graph_cfg.tenant_id, graph_cfg.client_id, graph_cfg.client_secret)
+        raw_messages = graph.list_recent_messages(graph_cfg.mailbox, since_iso=since_iso, folder=graph_cfg.folder)
+        announcements = parse_messages(raw_messages)
+        unread_count = sum(1 for a in announcements if not a.is_read)
+        announcements = summarize_announcements(announcements)
+        return [a.to_dict() for a in announcements], unread_count
+    except Exception as exc:
+        print(f"[daily_scan] announcements fetch failed, continuing without them: {exc}")
+        return [], 0
 
 
 def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any]:
@@ -429,15 +482,24 @@ def run_daily_scan(config_path: Path, *, dry_run: bool = False) -> Dict[str, Any
                 "buildId": build_id,
                 "buildNumber": latest_build.get("buildNumber"),
                 "buildUrl": (latest_build.get("_links") or {}).get("web", {}).get("href"),
+                "buildResult": latest_build.get("result"),
+                "buildFinishedAt": latest_build.get("finishTime"),
                 "violationCounts": _violation_counts(findings),
                 "findings": findings,
             }
         )
 
+    announcements_report, unread_announcements = _fetch_announcements()
+
+    summary = _build_summary(pipelines_report)
+    summary["unreadAnnouncements"] = unread_announcements
+
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "pipelines": pipelines_report,
-        "summary": _build_summary(pipelines_report),
+        "summary": summary,
+        "certificates": [],
+        "announcements": announcements_report,
     }
 
 

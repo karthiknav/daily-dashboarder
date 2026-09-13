@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from daily_dashboard.config import AdoConfig, ScanTarget
+from daily_dashboard.config import AdoConfig, GraphConfig, ScanTarget
 from daily_dashboard.jobs.daily_scan import run_daily_scan, write_report
 
 MODULE = "daily_dashboard.jobs.daily_scan"
@@ -37,6 +37,9 @@ class TestRunDailyScan(unittest.TestCase):
             patch(f"{MODULE}.load_ado_config", return_value=AdoConfig(org_url="https://dev.azure.com/org", project="MyProject", pat="pat")),
             patch(f"{MODULE}.AdoPipelines", return_value=pipelines_mock),
             patch(f"{MODULE}.AdoGit", return_value=ado_gate_mock or MagicMock()),
+            # Announcements are an opt-in feature; keep these tests isolated from
+            # whatever MS_GRAPH_* env vars happen to be set locally.
+            patch(f"{MODULE}.load_graph_config", return_value=None),
         ]
         for p in patches:
             p.start()
@@ -61,7 +64,10 @@ class TestRunDailyScan(unittest.TestCase):
         pipeline_entry = report["pipelines"][0]
         self.assertEqual(pipeline_entry["target"], "my-repo")
         self.assertEqual(pipeline_entry["buildNumber"], "20260907.1")
-        self.assertEqual(pipeline_entry["violationCounts"], {"dependency_scanner": 1, "total": 1})
+        self.assertEqual(
+            pipeline_entry["violationCounts"],
+            {"dependency_scanner": 1, "total": 1, "bySeverity": {"critical": 1}},
+        )
 
         finding = pipeline_entry["findings"][0]
         self.assertEqual(finding["category"], "dependency_scanner")
@@ -74,11 +80,17 @@ class TestRunDailyScan(unittest.TestCase):
             report["summary"],
             {
                 "totalPipelines": 1,
+                "pipelinesFailed": 0,
                 "totalViolations": 1,
                 "violationsByCategory": {"dependency_scanner": 1},
+                "violationsBySeverity": {"critical": 1},
                 "readyPrCount": 0,
+                "certificatesExpiringSoon": 0,
+                "unreadAnnouncements": 0,
             },
         )
+        self.assertEqual(report["certificates"], [])
+        self.assertEqual(report["announcements"], [])
 
     def test_live_run_surfaces_ready_pr_url(self) -> None:
         pipelines_mock = MagicMock()
@@ -253,6 +265,98 @@ class TestRunDailyScan(unittest.TestCase):
             fixed["remediation"]["prUrl"],
             "https://dev.azure.com/org/MyProject/_git/my-repo/pullrequest/77",
         )
+
+
+class TestAnnouncements(unittest.TestCase):
+    def _patch_no_pipelines(self):
+        pipelines_mock = MagicMock()
+        pipelines_mock.list_pipeline_definitions.return_value = []
+        patches = [
+            patch(f"{MODULE}.load_ado_config", return_value=AdoConfig(org_url="https://dev.azure.com/org", project="MyProject", pat="pat")),
+            patch(f"{MODULE}.AdoPipelines", return_value=pipelines_mock),
+            patch(f"{MODULE}.AdoGit", return_value=MagicMock()),
+            patch(f"{MODULE}.load_targets", return_value=[]),
+            # Pre-existing/unrelated: _bootstrap_openai_token_from_dbutils raises
+            # outside Databricks unless OPENAI_LAB_VARIANT is set; not this
+            # feature's concern, so neutralize it to isolate the announcements path.
+            patch(f"{MODULE}._bootstrap_openai_token_from_dbutils"),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_announcements_stay_empty_when_graph_not_configured(self) -> None:
+        self._patch_no_pipelines()
+        with patch(f"{MODULE}.load_graph_config", return_value=None):
+            report = run_daily_scan(Path("pipelines.yml"), dry_run=True)
+
+        self.assertEqual(report["announcements"], [])
+        self.assertEqual(report["summary"]["unreadAnnouncements"], 0)
+
+    def test_announcements_are_fetched_and_summarized_when_graph_configured(self) -> None:
+        self._patch_no_pipelines()
+        graph_cfg = GraphConfig(
+            tenant_id="tenant",
+            client_id="client",
+            client_secret="secret",
+            mailbox="announcements@example.com",
+            lookback_hours=24,
+            folder="inbox",
+        )
+        raw_messages = [
+            {
+                "id": "a1",
+                "subject": "Security Patch Deployment on Sep 25",
+                "from": {"emailAddress": {"name": "Security Team"}},
+                "receivedDateTime": "2026-09-13T06:00:00Z",
+                "bodyPreview": "All services will receive the quarterly patch.",
+                "body": {"contentType": "text", "content": "All services will receive the quarterly patch."},
+                "importance": "high",
+                "isRead": False,
+                "webLink": "https://outlook.office.com/mail/a1",
+            }
+        ]
+        graph_mock = MagicMock()
+        graph_mock.list_recent_messages.return_value = raw_messages
+
+        with patch(f"{MODULE}.load_graph_config", return_value=graph_cfg), patch(
+            f"{MODULE}.MsGraphMail", return_value=graph_mock
+        ) as graph_ctor, patch(
+            f"{MODULE}.summarize_announcements", side_effect=lambda announcements, **_: announcements
+        ):
+            report = run_daily_scan(Path("pipelines.yml"), dry_run=True)
+
+        graph_ctor.assert_called_once_with("tenant", "client", "secret")
+        graph_mock.list_recent_messages.assert_called_once()
+        _, kwargs = graph_mock.list_recent_messages.call_args
+        self.assertEqual(kwargs["folder"], "inbox")
+
+        self.assertEqual(len(report["announcements"]), 1)
+        announcement = report["announcements"][0]
+        self.assertEqual(announcement["id"], "a1")
+        self.assertEqual(announcement["from"], "Security Team")
+        self.assertEqual(announcement["priority"], "high")
+        self.assertEqual(report["summary"]["unreadAnnouncements"], 1)
+
+    def test_announcements_fetch_failure_does_not_break_the_scan(self) -> None:
+        self._patch_no_pipelines()
+        graph_cfg = GraphConfig(
+            tenant_id="tenant",
+            client_id="client",
+            client_secret="secret",
+            mailbox="announcements@example.com",
+            lookback_hours=24,
+        )
+        graph_mock = MagicMock()
+        graph_mock.list_recent_messages.side_effect = Exception("Graph API unavailable")
+
+        with patch(f"{MODULE}.load_graph_config", return_value=graph_cfg), patch(
+            f"{MODULE}.MsGraphMail", return_value=graph_mock
+        ):
+            report = run_daily_scan(Path("pipelines.yml"), dry_run=True)
+
+        self.assertEqual(report["announcements"], [])
+        self.assertEqual(report["summary"]["unreadAnnouncements"], 0)
 
 
 class TestWriteReport(unittest.TestCase):

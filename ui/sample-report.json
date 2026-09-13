@@ -1,0 +1,107 @@
+{
+  "generatedAt": "2026-09-13T09:14:00Z",
+  "summary": {
+    "totalPipelines": 3,
+    "pipelinesFailed": 1,
+    "totalViolations": 6,
+    "violationsByCategory": {"dependency_scanner": 4, "checkmarx": 2},
+    "violationsBySeverity": {"critical": 2, "high": 2, "medium": 1, "low": 1},
+    "readyPrCount": 2,
+    "certificatesExpiringSoon": 3,
+    "unreadAnnouncements": 2
+  },
+  "pipelines": [
+    {
+      "target": "lf-forward-integrations",
+      "pipeline": "lf-forward-integrations-build-other-branch",
+      "project": "Tribe Business Lending",
+      "buildId": 2451,
+      "buildNumber": "20260913.4",
+      "buildUrl": "https://dev.azure.com/raboweb/Tribe%20Business%20Lending/_build/results?buildId=2451",
+      "buildResult": "failed",
+      "buildFinishedAt": "2026-09-13T07:00:00Z",
+      "violationCounts": {"dependency_scanner": 2, "checkmarx": 1, "total": 3, "bySeverity": {"critical": 1, "high": 1, "medium": 1}},
+      "findings": [
+        {
+          "category": "dependency_scanner",
+          "severity": "critical",
+          "summary": "log4j-core 2.14.1 (CVE-2021-44228)",
+          "finding": {"package": "log4j-core", "currentVersion": "2.14.1", "fixedVersion": "2.17.1", "cve": "CVE-2021-44228", "severity": "critical"},
+          "remediation": {"attempted": true, "success": true, "prUrl": "https://dev.azure.com/raboweb/Tribe%20Business%20Lending/_git/lf-forward-integrations/pullrequest/204", "notes": "Bumped to 2.17.1"}
+        },
+        {
+          "category": "dependency_scanner",
+          "severity": "high",
+          "summary": "netty-codec-http3 4.2.17.Final (advisory)",
+          "finding": {"package": "netty-codec-http3", "currentVersion": "4.2.17.Final", "fixedVersion": null, "cve": null, "severity": "high"},
+          "remediation": {"attempted": true, "success": false, "prUrl": null, "notes": "LLM fixer failed: context window exceeded"}
+        },
+        {
+          "category": "checkmarx",
+          "severity": "medium",
+          "summary": "Open_Redirect in /src/main/java/Foo.java:42",
+          "finding": {"rule": "Open_Redirect", "file": "/src/main/java/Foo.java", "line": 42, "severity": "medium", "description": "CWE-601"},
+          "remediation": {"attempted": true, "success": false, "prUrl": null, "notes": "manual fix required"}
+        }
+      ]
+    },
+    {
+      "target": "payments-service",
+      "pipeline": "payments-service-ci",
+      "project": "Tribe Business Lending",
+      "buildId": 3310,
+      "buildNumber": "20260913.2",
+      "buildUrl": "https://dev.azure.com/raboweb/Tribe%20Business%20Lending/_build/results?buildId=3310",
+      "buildResult": "partiallySucceeded",
+      "buildFinishedAt": "2026-09-13T04:00:00Z",
+      "violationCounts": {"dependency_scanner": 1, "checkmarx": 1, "total": 2, "bySeverity": {"high": 1, "low": 1}},
+      "findings": [
+        {
+          "category": "dependency_scanner",
+          "severity": "low",
+          "summary": "annotations 26.0.2",
+          "finding": {"package": "annotations", "currentVersion": "26.0.2", "fixedVersion": null, "cve": null, "severity": "low"},
+          "remediation": {"attempted": false, "success": null, "prUrl": null, "notes": null}
+        },
+        {
+          "category": "checkmarx",
+          "severity": "high",
+          "summary": "SqlInjection in /src/main/java/Bar.java:88",
+          "finding": {"rule": "SqlInjection", "file": "/src/main/java/Bar.java", "line": 88, "severity": "high", "description": "CWE-89"},
+          "remediation": {"attempted": true, "success": true, "prUrl": "https://dev.azure.com/raboweb/Tribe%20Business%20Lending/_git/payments-service/pullrequest/77", "notes": "Applied parameterized query"}
+        }
+      ]
+    },
+    {
+      "target": "user-api-gateway",
+      "pipeline": "user-api-gateway-ci",
+      "project": "Tribe Business Lending",
+      "buildId": 1090,
+      "buildNumber": "20260913.1",
+      "buildUrl": "https://dev.azure.com/raboweb/Tribe%20Business%20Lending/_build/results?buildId=1090",
+      "buildResult": "succeeded",
+      "buildFinishedAt": "2026-09-12T22:00:00Z",
+      "violationCounts": {"dependency_scanner": 1, "checkmarx": 0, "total": 1, "bySeverity": {"critical": 1}},
+      "findings": [
+        {
+          "category": "dependency_scanner",
+          "severity": "critical",
+          "summary": "jackson-databind 2.9.8 (CVE-2019-12384)",
+          "finding": {"package": "jackson-databind", "currentVersion": "2.9.8", "fixedVersion": "2.9.9", "cve": "CVE-2019-12384", "severity": "critical"},
+          "remediation": {"attempted": true, "success": true, "prUrl": "https://dev.azure.com/raboweb/Tribe%20Business%20Lending/_git/user-api-gateway/pullrequest/12", "notes": "Bumped to 2.9.9"}
+        }
+      ]
+    },
+    { "target": "legacy-batch-job", "error": "pipeline 'legacy-batch-job-ci' not found" }
+  ],
+  "certificates": [
+    {"name": "api.bank.com", "environment": "Production", "expiresOn": "2026-09-25", "expiresInDays": 12},
+    {"name": "*.rabobank.com", "environment": "Production", "expiresOn": "2026-10-01", "expiresInDays": 18},
+    {"name": "internal.service.local", "environment": "Test", "expiresOn": "2026-10-07", "expiresInDays": 24},
+    {"name": "archive.internal.com", "environment": "Test", "expiresOn": "2027-01-01", "expiresInDays": 110}
+  ],
+  "announcements": [
+    {"id": "a1", "subject": "Security Patch Deployment on Sep 25", "from": "Security Team", "receivedAt": "2026-09-13T06:00:00Z", "priority": "high", "summary": "All services will receive the quarterly patch.", "link": null},
+    {"id": "a2", "subject": "Release Freeze this Friday", "from": "DevOps Team", "receivedAt": "2026-09-12T09:00:00Z", "priority": "normal", "summary": "", "link": null}
+  ]
+}
