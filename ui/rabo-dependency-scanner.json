@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "title": "RaboBank Dependency Scanner",
+  "description": "Dependency entries supplied by the user. No advisory IDs or severity assessments were supplied.",
+  "dependencies": [
+    {
+      "name": "netty-codec-classes-quic",
+      "groupId": "io.netty",
+      "artifactId": "netty-codec-classes-quic",
+      "versions": [
+        "4.2.17.Final"
+      ],
+      "advisories": []
+    },
+    {
+      "name": "netty-codec-http3",
+      "groupId": "io.netty",
+      "artifactId": "netty-codec-http3",
+      "versions": [
+        "4.2.17.Final"
+      ],
+      "advisories": []
+    },
+    {
+      "name": "annotations",
+      "groupId": "org.jetbrains",
+      "artifactId": "annotations",
+      "versions": [
+        "26.0.2"
+      ],
+      "advisories": []
+    }
+  ]
+}

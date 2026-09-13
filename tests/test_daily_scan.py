@@ -183,6 +183,77 @@ class TestRunDailyScan(unittest.TestCase):
         self.assertEqual(entry["branchDebug"][0]["sourceBranch"], "refs/heads/main")
         self.assertEqual(entry["branchDebug"][1]["sourceBranch"], "refs/heads/checkmarx_v1")
 
+    def test_checkmarx_one_fixer_failure_does_not_block_other_findings(self) -> None:
+        pipelines_mock = MagicMock()
+        pipelines_mock.list_pipeline_definitions.return_value = [{"id": 7}]
+        pipelines_mock.get_latest_build.return_value = _latest_build()
+        pipelines_mock.find_timeline_records.return_value = [{"log": {"id": 12}}]
+        pipelines_mock.get_task_log_text.return_value = "checkmarx task log"
+        ado_mock = MagicMock()
+        ado_mock.commit_paths.return_value = True
+        ado_mock.create_pr.return_value = "https://dev.azure.com/org/MyProject/_git/my-repo/pullrequest/77"
+        self._patch_common(pipelines_mock=pipelines_mock, ado_gate_mock=ado_mock)
+
+        finding_1 = MagicMock(
+            severity="MEDIUM",
+            rule="Open*Redirect",
+            file="/src/main/java/Foo.java",
+            line=42,
+            to_dict=lambda: {
+                "rule": "Open*Redirect",
+                "file": "/src/main/java/Foo.java",
+                "line": 42,
+                "severity": "MEDIUM",
+                "description": "CWE-601",
+                "source": "checkmarx_api",
+            },
+        )
+        finding_2 = MagicMock(
+            severity="HIGH",
+            rule="SqlInjection",
+            file="/src/main/java/Bar.java",
+            line=88,
+            to_dict=lambda: {
+                "rule": "SqlInjection",
+                "file": "/src/main/java/Bar.java",
+                "line": 88,
+                "severity": "HIGH",
+                "description": "CWE-89",
+                "source": "checkmarx_api",
+            },
+        )
+
+        target = _target(features=["RabobankCheckmarx"])
+        with patch(f"{MODULE}.load_targets", return_value=[target]), patch(
+            f"{MODULE}.investigate_checkmarx_task_logs",
+            return_value={
+                "scanId": "922f5390-5083-4b80-b6cf-6057622a3ac6",
+                "findings": [finding_1, finding_2],
+            },
+        ), patch(
+            f"{MODULE}.fix_checkmarx_violation",
+            side_effect=[
+                Exception("context window exceeded"),
+                {"success": True, "filesChanged": ["src/main/java/Bar.java"], "notes": "Applied parameterized query"},
+            ],
+        ):
+            report = run_daily_scan(Path("pipelines.yml"), dry_run=False)
+
+        findings = report["pipelines"][0]["findings"]
+        self.assertEqual(len(findings), 2)
+
+        failed = next(f for f in findings if f["finding"]["rule"] == "Open*Redirect")
+        self.assertFalse(failed["remediation"]["success"])
+        self.assertEqual(failed["remediation"]["prUrl"], None)
+        self.assertIn("LLM fixer failed", failed["remediation"]["notes"])
+
+        fixed = next(f for f in findings if f["finding"]["rule"] == "SqlInjection")
+        self.assertTrue(fixed["remediation"]["success"])
+        self.assertEqual(
+            fixed["remediation"]["prUrl"],
+            "https://dev.azure.com/org/MyProject/_git/my-repo/pullrequest/77",
+        )
+
 
 class TestWriteReport(unittest.TestCase):
     def test_round_trips_json(self) -> None:

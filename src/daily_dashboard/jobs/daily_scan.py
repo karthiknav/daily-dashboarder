@@ -128,6 +128,16 @@ def _remediate_all_findings_single_branch(
 ) -> List[Dict[str, Any]]:
     findings: List[Dict[str, Any]] = []
 
+    def _no_pr_reason_for_entry(entry: Dict[str, Any], default_reason: str) -> None:
+        remediation = entry.get("remediation", {})
+        if remediation.get("prUrl"):
+            return
+        notes = remediation.get("notes")
+        if notes:
+            return
+        remediation["notes"] = default_reason
+        entry["remediation"] = remediation
+
     if dry_run:
         findings.extend(
             _finding_entry("dependency_scanner", finding, attempted=False)
@@ -144,63 +154,124 @@ def _remediate_all_findings_single_branch(
 
     with tempfile.TemporaryDirectory(prefix="daily-dashboard-") as tmp:
         repo_dir = Path(tmp) / target.repo
-        ado.clone_or_pull(target.checkout_url, repo_dir)
-        ado.checkout_branch(repo_dir, target.target_branch)
-
         branch = f"daily-dashboard/remediation-{build_id}-{date.today().isoformat()}"
-        ado.create_branch(repo_dir, branch)
-
         changed_paths: List[Path] = []
 
-        for finding in dep_findings:
-            fix_result = fix_dependency(repo_dir, finding)
-            changed_paths.extend(repo_dir / p for p in (fix_result.get("filesChanged") or []))
-            findings.append(
-                _finding_entry(
-                    "dependency_scanner",
-                    finding,
-                    attempted=True,
-                    success=fix_result.get("success"),
-                    pr_url=None,
-                    notes=fix_result.get("notes"),
+        try:
+            ado.clone_or_pull(target.checkout_url, repo_dir)
+            ado.checkout_branch(repo_dir, target.target_branch)
+            ado.create_branch(repo_dir, branch)
+        except Exception as exc:
+            reason = f"Repository setup failed; no automated fix applied: {exc}"
+            for finding in dep_findings:
+                findings.append(
+                    _finding_entry(
+                        "dependency_scanner",
+                        finding,
+                        attempted=True,
+                        success=False,
+                        pr_url=None,
+                        notes=reason,
+                    )
                 )
-            )
+            for finding in cx_findings:
+                findings.append(
+                    _finding_entry(
+                        "checkmarx",
+                        finding,
+                        attempted=True,
+                        success=False,
+                        pr_url=None,
+                        notes=reason,
+                    )
+                )
+            return findings
+
+        for finding in dep_findings:
+            try:
+                fix_result = fix_dependency(repo_dir, finding)
+                changed_paths.extend(repo_dir / p for p in (fix_result.get("filesChanged") or []))
+                findings.append(
+                    _finding_entry(
+                        "dependency_scanner",
+                        finding,
+                        attempted=True,
+                        success=fix_result.get("success"),
+                        pr_url=None,
+                        notes=fix_result.get("notes"),
+                    )
+                )
+            except Exception as exc:
+                findings.append(
+                    _finding_entry(
+                        "dependency_scanner",
+                        finding,
+                        attempted=True,
+                        success=False,
+                        pr_url=None,
+                        notes=f"LLM fixer failed: {exc}",
+                    )
+                )
 
         for finding in cx_findings:
-            fix_result = fix_checkmarx_violation(repo_dir, finding)
-            changed_paths.extend(repo_dir / p for p in (fix_result.get("filesChanged") or []))
-            findings.append(
-                _finding_entry(
-                    "checkmarx",
-                    finding,
-                    attempted=True,
-                    success=fix_result.get("success"),
-                    pr_url=None,
-                    notes=fix_result.get("notes"),
+            try:
+                fix_result = fix_checkmarx_violation(repo_dir, finding)
+                changed_paths.extend(repo_dir / p for p in (fix_result.get("filesChanged") or []))
+                findings.append(
+                    _finding_entry(
+                        "checkmarx",
+                        finding,
+                        attempted=True,
+                        success=fix_result.get("success"),
+                        pr_url=None,
+                        notes=fix_result.get("notes"),
+                    )
                 )
-            )
+            except Exception as exc:
+                findings.append(
+                    _finding_entry(
+                        "checkmarx",
+                        finding,
+                        attempted=True,
+                        success=False,
+                        pr_url=None,
+                        notes=f"LLM fixer failed: {exc}",
+                    )
+                )
 
         changed_paths = _dedupe_paths(changed_paths)
         pr_url = None
+        pr_failure_reason = "No fixable code changes were produced by the LLM fixers."
         if changed_paths:
-            pushed = ado.commit_paths(repo_dir, changed_paths, "fix: automated remediation for scan findings")
-            if pushed:
-                pr_url = ado.create_pr(
-                    branch,
-                    target.target_branch,
-                    title=f"Automated security/dependency remediation for build {build_id}",
-                    description=(
-                        "Automated fixes by daily-dashboard for dependency and/or Checkmarx findings. "
-                        "Please review before merge."
-                    ),
-                    repo_url=target.checkout_url,
-                    repo_dir=repo_dir,
-                )
+            try:
+                pushed = ado.commit_paths(repo_dir, changed_paths, "fix: automated remediation for scan findings")
+                if pushed:
+                    pr_url = ado.create_pr(
+                        branch,
+                        target.target_branch,
+                        title=f"Automated security/dependency remediation for build {build_id}",
+                        description=(
+                            "Automated fixes by daily-dashboard for dependency and/or Checkmarx findings. "
+                            "Please review before merge."
+                        ),
+                        repo_url=target.checkout_url,
+                        repo_dir=repo_dir,
+                    )
+                else:
+                    pr_failure_reason = "Fixes were generated, but nothing was committed/pushed."
+            except Exception as exc:
+                pr_failure_reason = f"Fixes were generated, but PR creation failed: {exc}"
 
         if pr_url:
             for entry in findings:
                 if entry["remediation"].get("success"):
                     entry["remediation"]["prUrl"] = pr_url
+
+        for entry in findings:
+            if entry["remediation"].get("success") and not entry["remediation"].get("prUrl"):
+                _no_pr_reason_for_entry(entry, pr_failure_reason)
+            if entry["remediation"].get("success") is False:
+                _no_pr_reason_for_entry(entry, "LLM could not generate an automated fix for this finding.")
 
     return findings
 
