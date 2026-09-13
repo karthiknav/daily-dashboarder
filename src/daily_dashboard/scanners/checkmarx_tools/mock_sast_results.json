@@ -7,7 +7,7 @@
       "similarityId": "565241740",
       "status": "RECURRENT",
       "state": "TO_VERIFY",
-      "severity": "INFO",
+      "severity": "MEDIUM",
       "confidenceLevel": 0,
       "created": "2026-09-11T13:08:16Z",
       "firstFoundAt": "2026-05-14T08:05:16Z",
@@ -480,62 +480,6 @@
           "OWASP ASVS",
           "OWASP Top 10 2021",
           "OWASP Top 10 2025"
-        ]
-      }
-    },
-    {
-      "type": "sast",
-      "id": "gblnx55Ny+V4hKeh5r7RevKev24=",
-      "alternateId": "gblnx55Ny+V4hKeh5r7RevKev24=",
-      "similarityId": "46903517",
-      "status": "RECURRENT",
-      "state": "PROPOSED_NOT_EXPLOITABLE",
-      "severity": "MEDIUM",
-      "confidenceLevel": 0,
-      "created": "2026-09-11T13:08:16Z",
-      "firstFoundAt": "2026-01-26T13:26:41Z",
-      "foundAt": "2026-09-11T13:08:16Z",
-      "firstScanId": "333a8cfb-de75-4a74-b7a5-5dd1aca90cab",
-      "description": "The potentially tainted value provided by requestContentStr in /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/controller/GenerateDocumentControllerImpl.java at line 31 is used as a destination URL by ReturnStmt in /src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/controller/GenerateDocumentControllerImpl.java at line 33, potentially allowing attackers to perform an open redirection.\n\n",
-      "data": {
-        "queryId": 5854466950125120303,
-        "queryName": "Open_Redirect",
-        "group": "Java_Medium_Threat",
-        "resultHash": "gblnx55Ny+V4hKeh5r7RevKev24=",
-        "languageName": "Java",
-        "nodes": [
-          {
-            "id": "H4wXipXghxLDTLXMcP3gnZSt6cc=",
-            "line": 31,
-            "name": "requestContentStr",
-            "column": 123,
-            "length": 17,
-            "method": "generateDocument",
-            "nodeID": 49534,
-            "domType": "ParamDecl",
-            "fileName": "/src/main/java/nl/rabobank/gict/bl/forward/forward_integrations/features/generate_document/controller/GenerateDocumentControllerImpl.java",
-            "fullName": "nl.rabobank.gict.bl.forward.forward_integrations.features.generate_document.controller.GenerateDocumentControllerImpl.generateDocument.requestContentStr",
-            "typeName": "String",
-            "methodLine": 31,
-            "definitions": "1"
-          }
-        ]
-      },
-      "comments": {},
-      "vulnerabilityDetails": {
-        "cweId": 601,
-        "compliances": [
-          "ASD STIG 6.1",
-          "MOIS(KISA) Secure Coding 2021",
-          "FISMA 2014",
-          "OWASP Top 10 2025",
-          "PCI DSS v4.0",
-          "ASA Premium",
-          "NIST SP 800-53",
-          "OWASP ASVS",
-          "OWASP Top 10 2021",
-          "PCI DSS v3.2.1",
-          "OWASP Top 10 API 2023"
         ]
       }
     }
